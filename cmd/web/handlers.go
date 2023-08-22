@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"text/template"
 
 	"github.com/aspandyar/internal/models"
 )
@@ -16,22 +15,16 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files := []string{
-		"./ui/html/base.tmpl.html",
-		"./ui/html/pages/home.tmpl.html",
-		"./ui/html/partials/nav.tmpl.html",
-	}
-
-	ts, err := template.ParseFiles(files...)
+	forums, err := app.forums.Latest()
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
 
-	err = ts.ExecuteTemplate(w, "base", nil)
-	if err != nil {
-		app.serverError(w, err)
-	}
+	data := app.newTemplateData(r)
+	data.Forums = forums
+
+	app.render(w, http.StatusOK, "home.tmpl.html", data)
 }
 
 func (app *application) forumView(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +44,10 @@ func (app *application) forumView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "%+v", forum)
+	data := app.newTemplateData(r)
+	data.Forum = forum
+
+	app.render(w, http.StatusOK, "view.tmpl.html", data)
 }
 
 func (app *application) forumCreate(w http.ResponseWriter, r *http.Request) {

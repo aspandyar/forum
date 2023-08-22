@@ -6,15 +6,17 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"text/template"
 
 	"github.com/aspandyar/internal/models"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type application struct {
-	errorLog *log.Logger
-	infoLog  *log.Logger
-	forums   *models.ForumModel
+	errorLog      *log.Logger
+	infoLog       *log.Logger
+	forums        *models.ForumModel
+	tempalteCache map[string]*template.Template
 }
 
 const (
@@ -35,10 +37,16 @@ func main() {
 	}
 	defer db.Close()
 
+	templateCache, err := newTemplateCache()
+	if err != nil {
+		errorLog.Fatal(err)
+	}
+
 	app := &application{
-		errorLog: errorLog,
-		infoLog:  infoLog,
-		forums:   &models.ForumModel{DB: db},
+		errorLog:      errorLog,
+		infoLog:       infoLog,
+		forums:        &models.ForumModel{DB: db},
+		tempalteCache: templateCache,
 	}
 
 	srv := &http.Server{

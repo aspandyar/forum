@@ -58,7 +58,7 @@ func (m *ForumModel) Get(id int) (*Forum, error) {
 
 func (m *ForumModel) Latest() ([]*Forum, error) {
 	stmt := `SELECT id, title, content, created, expires
-	FROM snippets
+	FROM forums
 	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now')
 	ORDER BY id DESC
 	LIMIT 10;`
