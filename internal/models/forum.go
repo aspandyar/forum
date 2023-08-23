@@ -3,6 +3,8 @@ package models
 import (
 	"database/sql"
 	"errors"
+	"io/ioutil"
+	"log"
 	"time"
 )
 
@@ -16,6 +18,19 @@ type Forum struct {
 
 type ForumModel struct {
 	DB *sql.DB
+}
+
+func (m *ForumModel) Init(initSqlFileName string) error {
+	file, err := ioutil.ReadFile(initSqlFileName)
+	if err != nil {
+		log.Fatalf("Can't read SQL file %v", err)
+	}
+	// Execute all
+	_, err = m.DB.Exec(string(file))
+	if err != nil {
+		log.Fatalf("DB init error: %v", err)
+	}
+	return nil
 }
 
 func (m *ForumModel) Insert(title string, content string, expires int) (int, error) {

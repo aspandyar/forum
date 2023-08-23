@@ -3,9 +3,11 @@ package main
 import (
 	"database/sql"
 	"flag"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"text/template"
 
 	"github.com/aspandyar/internal/models"
@@ -16,6 +18,7 @@ type application struct {
 	errorLog      *log.Logger
 	infoLog       *log.Logger
 	forums        *models.ForumModel
+	users         *models.UserModel
 	tempalteCache map[string]*template.Template
 }
 
@@ -37,6 +40,8 @@ func main() {
 	}
 	defer db.Close()
 
+	readDB(initSqlFileName, db)
+
 	templateCache, err := newTemplateCache()
 	if err != nil {
 		errorLog.Fatal(err)
@@ -46,6 +51,7 @@ func main() {
 		errorLog:      errorLog,
 		infoLog:       infoLog,
 		forums:        &models.ForumModel{DB: db},
+		users:         &models.UserModel{DB: db},
 		tempalteCache: templateCache,
 	}
 
@@ -60,8 +66,8 @@ func main() {
 	errorLog.Fatal(err)
 }
 
-func openDB(dsn string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", dsn)
+func openDB(path string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite3", path)
 	if err != nil {
 		return nil, err
 	}
@@ -69,4 +75,25 @@ func openDB(dsn string) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+func readDB(path string, db *sql.DB) {
+	sqlScript, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Split the script into individual statements
+	statements := strings.Split(string(sqlScript), ";")
+
+	// Execute each SQL statement
+	for _, stmt := range statements {
+		trimmedStmt := strings.TrimSpace(stmt)
+		if len(trimmedStmt) > 0 {
+			_, err := db.Exec(trimmedStmt)
+			if err != nil {
+				log.Println("Error executing statement:", err)
+			}
+		}
+	}
 }

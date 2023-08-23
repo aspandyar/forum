@@ -12,5 +12,9 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("/forum/view/", app.forumView)
 	mux.HandleFunc("/forum/create", app.handleForumCreate)
 
+	mux.HandleFunc("/user/signup", app.userSignup)
+	mux.HandleFunc("/user/login", app.userLogin)
+	mux.HandleFunc("/user/logout", app.userLogoutPost)
+
 	return app.recoverPanic(app.logRequest(secureHeaders(mux)))
 }
