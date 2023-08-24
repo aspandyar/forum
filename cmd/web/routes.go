@@ -9,12 +9,17 @@ func (app *application) routes() http.Handler {
 	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
 
 	mux.HandleFunc("/", app.home)
+
 	mux.HandleFunc("/forum/view/", app.forumView)
-	mux.HandleFunc("/forum/create", app.handleForumCreate)
 
 	mux.HandleFunc("/user/signup", app.userSignup)
 	mux.HandleFunc("/user/login", app.userLogin)
-	mux.HandleFunc("/user/logout", app.userLogoutPost)
+
+	forumCreate := http.HandlerFunc(app.handleForumCreate)
+	mux.Handle("/forum/create", app.requireAuthentication(forumCreate))
+
+	userLogout := http.HandlerFunc(app.userLogoutPost)
+	mux.Handle("/user/logout", app.requireAuthentication(userLogout))
 
 	return app.recoverPanic(app.logRequest(secureHeaders(mux)))
 }
