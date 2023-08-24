@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aspandyar/internal/models"
 	"github.com/aspandyar/internal/validator"
@@ -44,30 +45,11 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := app.newTemplateData(r)
+
 	data.Forums = forums
 
 	app.render(w, http.StatusOK, "home.tmpl.html", data)
 }
-
-// func (app *application) handleMain(next http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		cookie, err := models.GetSessionCookie(r)
-// 		if err != nil {
-// 			http.Redirect(w, r, "/", http.StatusSeeOther)
-// 			return
-// 		}
-
-// 		_, err = app.sessions.GetUserIDFromSessionToken(cookie.Value)
-// 		if err != nil {
-// 			http.Redirect(w, r, "/", http.StatusSeeOther)
-// 			return
-// 		}
-
-// 		models.SetSessionCookie(w, cookie.Value)
-
-// 		next.ServeHTTP(w, r)
-// 	})
-// }
 
 func (app *application) forumView(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
@@ -96,6 +78,7 @@ func (app *application) forumView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := app.newTemplateData(r)
+
 	data.Forum = forum
 
 	app.render(w, http.StatusOK, "view.tmpl.html", data)
@@ -116,6 +99,14 @@ func (app *application) handleForumCreate(w http.ResponseWriter, r *http.Request
 func (app *application) ForumCreateGet(w http.ResponseWriter, r *http.Request) {
 	// Handle GET request for forum create
 	data := app.newTemplateData(r)
+
+	// flash, err := models.GetFlashMessage(r)
+	// if err != nil {
+	// 	app.serverError(w, err)
+	// 	return
+	// } else if flash != "" {
+	// 	data.Flash = flash
+	// }
 
 	data.Form = forumCreateForm{
 		Expires: 365,
@@ -280,37 +271,39 @@ func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionID, err := app.sessions.CreateSessionForUser(userID)
+	sessionToken, err := app.sessions.CreateSession(userID)
 	if err != nil {
 		app.serverError(w, err)
+		return
 	}
-
-	models.SetSessionCookie(w, sessionID)
-
-	models.SetFlashMessage(w, "You've been logged in successfully!")
+	models.SetSessionCookie(w, sessionToken, time.Now().Add(15*time.Minute))
 
 	http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
 }
 
 func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
-	cookie, err := models.GetSessionCookie(r)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
 
-	userID, err := app.sessions.GetUserIDFromSessionToken(cookie.Value)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	err = app.sessions.DeleteSessionForUser(userID)
-	if err != nil {
-		app.serverError(w, err)
-	}
-
-	models.SetFlashMessage(w, "You've been logged out successfully!")
+	models.ClearSessionCookie(w)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (app *application) isAuthenticated(r *http.Request) bool {
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		if err == http.ErrNoCookie {
+			return false
+		}
+		return false
+	}
+
+	_, expiry, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		return false
+	}
+
+	if expiry.Before(time.Now()) {
+		return false
+	}
+	return true
 }
