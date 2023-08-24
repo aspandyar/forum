@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -72,4 +73,13 @@ func SetSessionCookie(w http.ResponseWriter, sessionID string) {
 
 func GetSessionCookie(r *http.Request) (*http.Cookie, error) {
 	return r.Cookie(sessionCookieName)
+}
+
+func SetFlashMessage(w http.ResponseWriter, message string) {
+	cookie := http.Cookie{
+		Name:  "flash",
+		Value: url.QueryEscape(message),
+		// You can set other cookie properties like Path, Expires, etc.
+	}
+	http.SetCookie(w, &cookie)
 }

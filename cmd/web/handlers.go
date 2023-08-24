@@ -287,6 +287,8 @@ func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
 
 	models.SetSessionCookie(w, sessionID)
 
+	models.SetFlashMessage(w, "You've been logged in successfully!")
+
 	http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
 }
 
@@ -307,6 +309,8 @@ func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		app.serverError(w, err)
 	}
+
+	models.SetFlashMessage(w, "You've been logged out successfully!")
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
