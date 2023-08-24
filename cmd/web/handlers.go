@@ -49,6 +49,26 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	app.render(w, http.StatusOK, "home.tmpl.html", data)
 }
 
+// func (app *application) handleMain(next http.Handler) http.Handler {
+// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		cookie, err := models.GetSessionCookie(r)
+// 		if err != nil {
+// 			http.Redirect(w, r, "/", http.StatusSeeOther)
+// 			return
+// 		}
+
+// 		_, err = app.sessions.GetUserIDFromSessionToken(cookie.Value)
+// 		if err != nil {
+// 			http.Redirect(w, r, "/", http.StatusSeeOther)
+// 			return
+// 		}
+
+// 		models.SetSessionCookie(w, cookie.Value)
+
+// 		next.ServeHTTP(w, r)
+// 	})
+// }
+
 func (app *application) forumView(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
@@ -246,7 +266,7 @@ func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = app.users.Authenticate(form.Email, form.Password)
+	userID, err := app.users.Authenticate(form.Email, form.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrInvalidCredentials) {
 
@@ -260,9 +280,33 @@ func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sessionID, err := app.sessions.CreateSessionForUser(userID)
+	if err != nil {
+		app.serverError(w, err)
+	}
+
+	models.SetSessionCookie(w, sessionID)
+
 	http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
 }
 
 func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Logout the user...")
+	cookie, err := models.GetSessionCookie(r)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	userID, err := app.sessions.GetUserIDFromSessionToken(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.sessions.DeleteSessionForUser(userID)
+	if err != nil {
+		app.serverError(w, err)
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

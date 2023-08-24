@@ -13,3 +13,9 @@ CREATE TABLE IF NOT EXISTS users (
     hashed_password CHAR(60) NOT NULL,
     created DATETIME NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS sessions (
+    token CHAR(43) PRIMARY KEY,
+    user_id INTEGER NOT NULL UNIQUE,
+    expiry TEXT NOT NUll
+);

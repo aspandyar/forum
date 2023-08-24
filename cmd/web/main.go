@@ -18,6 +18,7 @@ type application struct {
 	errorLog      *log.Logger
 	infoLog       *log.Logger
 	forums        *models.ForumModel
+	sessions      *models.SessionModel
 	users         *models.UserModel
 	tempalteCache map[string]*template.Template
 }
@@ -52,6 +53,7 @@ func main() {
 		infoLog:       infoLog,
 		forums:        &models.ForumModel{DB: db},
 		users:         &models.UserModel{DB: db},
+		sessions:      &models.SessionModel{DB: db},
 		tempalteCache: templateCache,
 	}
 
