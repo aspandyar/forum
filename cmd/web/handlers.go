@@ -307,3 +307,5 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 	}
 	return true
 }
+
+//TODO: sessions is not work correctly, try to delete session, after logout and unique contrains to sessions!!!!
