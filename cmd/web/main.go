@@ -10,7 +10,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/aspandyar/internal/models"
+	"github.com/aspandyar/forum/internal/models"
 	_ "github.com/mattn/go-sqlite3"
 )
 

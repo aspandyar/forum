@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aspandyar/internal/models"
-	"github.com/aspandyar/internal/validator"
+	"github.com/aspandyar/forum/internal/models"
+	"github.com/aspandyar/forum/internal/validator"
 )
 
 type forumCreateForm struct {
@@ -74,12 +74,12 @@ func (app *application) forumView(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
 
-	if len(parts) != 4 || parts[1] != "forum" || parts[2] != "view" { //localhost:????/forum/view/id, so len should be 4, parts[1] = forum and parts[2] is view
+	if len(parts) != 4 || parts[1] != "forum" || parts[2] != "view" {
 		http.NotFound(w, r)
 		return
 	}
 
-	idStr := parts[3] //parts[3] is id
+	idStr := parts[3]
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id < 1 {
 		http.NotFound(w, r)

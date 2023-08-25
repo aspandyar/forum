@@ -5,7 +5,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/aspandyar/internal/models"
+	"github.com/aspandyar/forum/internal/models"
 )
 
 type templateData struct {
