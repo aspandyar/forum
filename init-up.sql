@@ -18,4 +18,13 @@ CREATE TABLE IF NOT EXISTS sessions (
     token CHAR(43) PRIMARY KEY,
     user_id INTEGER NOT NULL,
     expiry TEXT NOT NUll
+); 
+
+CREATE TABLE IF NOT EXISTS forum_likes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    forum_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    like_status INTEGER NOT NULL,
+    FOREIGN KEY (forum_id) REFERENCES forums (id),
+    FOREIGN KEY (user_id) REFERENCES users (id)
 );

@@ -2,13 +2,12 @@
 <nav>
     <div>
         <a href='/'>Home</a>
-        <!-- Toggle the link based on authentication status -->
+        <a href='/showAll'>All Forums</a>
         {{if .IsAuthenticated}}
             <a href='/forum/create'>Create forum</a>
         {{end}}
     </div>
     <div>
-        <!-- Toggle the links based on authentication status -->
         {{if .IsAuthenticated}}
             <form action='/user/logout' method='POST'>
                 <button>Logout</button>

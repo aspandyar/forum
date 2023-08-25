@@ -226,6 +226,8 @@ button:hover {
     padding: 16px;
     border-top: 1px solid #D5DBE1;
     border-bottom: 1px solid #D5DBE1;
+    overflow: auto;
+    white-space: pre-wrap;
 }
 
 .snippet .metadata {

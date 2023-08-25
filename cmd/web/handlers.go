@@ -51,6 +51,25 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	app.render(w, http.StatusOK, "home.tmpl.html", data)
 }
 
+func (app *application) allForum(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/showAll" {
+		app.notFound(w)
+		return
+	}
+
+	forums, err := app.forums.ShowAll()
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	data := app.newTemplateData(r)
+
+	data.Forums = forums
+
+	app.render(w, http.StatusOK, "allForums.tmpl.html", data)
+}
+
 func (app *application) forumView(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	parts := strings.Split(path, "/")

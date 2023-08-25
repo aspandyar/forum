@@ -10,6 +10,8 @@ func (app *application) routes() http.Handler {
 
 	mux.HandleFunc("/", app.home)
 
+	mux.HandleFunc("/showAll", app.allForum)
+
 	mux.HandleFunc("/forum/view/", app.forumView)
 
 	mux.HandleFunc("/user/signup", app.userSignup)
