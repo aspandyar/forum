@@ -271,17 +271,28 @@ func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionToken, err := app.sessions.CreateSession(userID)
+	session, err := app.sessions.CreateSession(userID)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
-	models.SetSessionCookie(w, sessionToken, time.Now().Add(15*time.Minute))
+	models.SetSessionCookie(w, session.Token, session.Expiry)
 
 	http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
 }
 
 func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.sessions.InvalidateSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
 
 	models.ClearSessionCookie(w)
 
@@ -291,9 +302,6 @@ func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 func (app *application) isAuthenticated(r *http.Request) bool {
 	cookie, err := r.Cookie("session")
 	if err != nil {
-		if err == http.ErrNoCookie {
-			return false
-		}
 		return false
 	}
 
@@ -302,10 +310,7 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 		return false
 	}
 
-	if expiry.Before(time.Now()) {
-		return false
-	}
-	return true
+	return time.Now().Before(expiry)
 }
 
 //TODO: sessions is not work correctly, try to delete session, after logout and unique contrains to sessions!!!!
