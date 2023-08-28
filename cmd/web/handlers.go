@@ -93,7 +93,20 @@ func (app *application) forumView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	forum, err := app.forums.Get(id)
+	var userID int
+
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		userID = 0
+	} else {
+		userID, _, err = app.sessions.GetSession(cookie.Value)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+	}
+
+	forum, err := app.forums.Get(id, userID)
 	if err != nil {
 		if errors.Is(err, models.ErrNoRecord) {
 			app.notFound(w)

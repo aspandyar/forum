@@ -12,6 +12,8 @@ type Forum struct {
 	ID      int
 	Title   string
 	Content string
+	Reacted bool
+	Liked   bool
 	Created time.Time
 	Expires time.Time
 }
@@ -50,7 +52,7 @@ func (m *ForumModel) Insert(title string, content string, expires int) (int, err
 	return int(id), nil
 }
 
-func (m *ForumModel) Get(id int) (*Forum, error) {
+func (m *ForumModel) Get(id, userId int) (*Forum, error) {
 	stmt := `SELECT id, title, content, created, expires
 	FROM forums
 	WHERE expires > datetime('now') AND id = ?;`
@@ -59,7 +61,41 @@ func (m *ForumModel) Get(id int) (*Forum, error) {
 
 	f := &Forum{}
 
-	err := row.Scan(&f.ID, &f.Title, &f.Content, &f.Created, &f.Expires)
+	var reacted, liked bool
+
+	stmt = `SELECT id, like_status
+	FROM forum_likes
+	WHERE forum_id = ? AND user_id = ?`
+
+	fl := &ForumLikes{}
+
+	rowL := m.DB.QueryRow(stmt, id, userId)
+
+	err := rowL.Scan(&fl.ID, &fl.LikeStatus)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			reacted = false
+			liked = false
+		} else {
+			return nil, err
+		}
+	}
+
+	if fl.ID == 0 {
+		reacted = false
+		liked = false
+	} else if fl.LikeStatus == 1 {
+		reacted = true
+		liked = true
+	} else if fl.LikeStatus == -1 {
+		reacted = true
+		liked = false
+	}
+
+	f.Reacted = reacted
+	f.Liked = liked
+
+	err = row.Scan(&f.ID, &f.Title, &f.Content, &f.Created, &f.Expires)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNoRecord

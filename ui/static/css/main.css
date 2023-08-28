@@ -309,3 +309,23 @@ footer {
     color: #757D80;
     text-align: center;
 }
+
+.like-button, .dislike-button {
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+    color: white;
+    font-weight: bold;
+}
+
+.liked {
+    background-color: green;
+}
+
+.disliked {
+    background-color: red;
+}
+
+.not-liked, .not-disliked {
+    background-color: gray;
+}
