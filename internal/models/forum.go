@@ -9,13 +9,15 @@ import (
 )
 
 type Forum struct {
-	ID      int
-	Title   string
-	Content string
-	Reacted bool
-	Liked   bool
-	Created time.Time
-	Expires time.Time
+	ID            int
+	Title         string
+	Content       string
+	Reacted       bool
+	Liked         bool
+	LikesCount    int
+	DislikesCount int
+	Created       time.Time
+	Expires       time.Time
 }
 
 type ForumModel struct {
@@ -61,6 +63,15 @@ func (m *ForumModel) Get(id, userId int) (*Forum, error) {
 
 	f := &Forum{}
 
+	err := row.Scan(&f.ID, &f.Title, &f.Content, &f.Created, &f.Expires)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNoRecord
+		} else {
+			return nil, err
+		}
+	}
+
 	var reacted, liked bool
 
 	stmt = `SELECT id, like_status
@@ -71,7 +82,7 @@ func (m *ForumModel) Get(id, userId int) (*Forum, error) {
 
 	rowL := m.DB.QueryRow(stmt, id, userId)
 
-	err := rowL.Scan(&fl.ID, &fl.LikeStatus)
+	err = rowL.Scan(&fl.ID, &fl.LikeStatus)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			reacted = false
@@ -95,7 +106,19 @@ func (m *ForumModel) Get(id, userId int) (*Forum, error) {
 	f.Reacted = reacted
 	f.Liked = liked
 
-	err = row.Scan(&f.ID, &f.Title, &f.Content, &f.Created, &f.Expires)
+	stmt = `SELECT f.id, f.title,
+		SUM(CASE WHEN l.like_status = 1 THEN 1 ELSE 0 END) AS like_count,
+		SUM(CASE WHEN l.like_status = -1 THEN 1 ELSE 0 END) AS dislike_count
+	FROM forums f
+	LEFT JOIN forum_likes l ON f.id = l.forum_id
+	WHERE f.id = ?
+	GROUP BY f.id, f.title`
+
+	rows := m.DB.QueryRow(stmt, id)
+
+	fs := &Forum{}
+
+	err = rows.Scan(&fs.ID, &fs.Title, &fs.LikesCount, &fs.DislikesCount)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNoRecord
@@ -103,6 +126,9 @@ func (m *ForumModel) Get(id, userId int) (*Forum, error) {
 			return nil, err
 		}
 	}
+
+	f.LikesCount = fs.LikesCount
+	f.DislikesCount = fs.DislikesCount
 
 	return f, nil
 }
