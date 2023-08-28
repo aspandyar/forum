@@ -32,6 +32,13 @@ type userLoginForm struct {
 	validator.Validator
 }
 
+type forumLikeForm struct {
+	LikeStatus int
+	ForumID    int
+	UserID     int
+	validator.Validator
+}
+
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		app.notFound(w)
@@ -332,4 +339,65 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 	return time.Now().Before(expiry)
 }
 
-//TODO: sessions is not work correctly, try to delete session, after logout and unique contrains to sessions!!!!
+func (app *application) forumIsLike(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	var likeStatus int
+	if r.Method == http.MethodPost {
+		button := r.PostForm.Get("button")
+		switch button {
+		case "like":
+			likeStatus = 1
+		case "dislike":
+			likeStatus = -1
+		default:
+			app.clientError(w, http.StatusBadRequest)
+			return
+		}
+	}
+
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	if len(parts) != 4 || parts[1] != "forum" || parts[2] != "like" {
+		http.NotFound(w, r)
+		return
+	}
+
+	idStr := parts[3]
+	forumId, err := strconv.Atoi(idStr)
+	if err != nil || forumId < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	userID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	form := forumLikeForm{
+		LikeStatus: likeStatus,
+		ForumID:    forumId,
+		UserID:     userID,
+	}
+
+	id, err := app.forumLike.LikeOrDislike(form.ForumID, form.UserID, form.LikeStatus)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/forum/view/%d", id), http.StatusSeeOther)
+}

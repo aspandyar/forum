@@ -23,5 +23,8 @@ func (app *application) routes() http.Handler {
 	userLogout := http.HandlerFunc(app.userLogoutPost)
 	mux.Handle("/user/logout", app.requireAuthentication(userLogout))
 
+	forumLikeStatus := http.HandlerFunc(app.forumIsLike)
+	mux.Handle("/forum/like/", app.requireAuthentication(forumLikeStatus))
+
 	return app.recoverPanic(app.logRequest(secureHeaders(mux)))
 }

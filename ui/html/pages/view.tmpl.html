@@ -12,6 +12,12 @@
             <time>Created: {{humanDate .Created}}</time>
             <time>Expires: {{humanDate .Expires}}</time>
         </div>
+        <div class='metadata'>
+            <form method="post" action="/forum/like/{{.ID}}">   
+                <button type="submit" name="button" value="like">like</button>
+                <button type="submit" name="button" value="dislike">dislike</button>
+            </form>
+        </div>
     </div>
     {{end}}
 {{end}}

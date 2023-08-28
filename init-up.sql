@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     token CHAR(43) PRIMARY KEY,
     user_id INTEGER NOT NULL,
     expiry TEXT NOT NUll
-); 
+);
 
 CREATE TABLE IF NOT EXISTS forum_likes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
