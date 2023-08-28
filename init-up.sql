@@ -28,3 +28,12 @@ CREATE TABLE IF NOT EXISTS forum_likes (
     FOREIGN KEY (forum_id) REFERENCES forums (id),
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
+
+CREATE TABLE IF NOT EXISTS forum_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    forum_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    comment TEXT NOT NULL,
+    FOREIGN KEY (forum_id) REFERENCES forums (id),
+    FOREIGN KEY (user_id) REFERENCES users (id)
+);

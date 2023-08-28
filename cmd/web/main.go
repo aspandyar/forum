@@ -21,6 +21,7 @@ type application struct {
 	sessions      *models.SessionModel
 	users         *models.UserModel
 	forumLike     *models.ForumLikesModel
+	forumComment  *models.ForumCommentModel
 	tempalteCache map[string]*template.Template
 }
 
@@ -56,6 +57,7 @@ func main() {
 		users:         &models.UserModel{DB: db},
 		sessions:      &models.SessionModel{DB: db},
 		forumLike:     &models.ForumLikesModel{DB: db},
+		forumComment:  &models.ForumCommentModel{DB: db},
 		tempalteCache: templateCache,
 	}
 

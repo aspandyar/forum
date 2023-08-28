@@ -39,6 +39,13 @@ type forumLikeForm struct {
 	validator.Validator
 }
 
+type forumCommentForm struct {
+	ForumID int
+	UserID  int
+	Comment string
+	validator.Validator
+}
+
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		app.notFound(w)
@@ -136,7 +143,6 @@ func (app *application) handleForumCreate(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) ForumCreateGet(w http.ResponseWriter, r *http.Request) {
-	// Handle GET request for forum create
 	data := app.newTemplateData(r)
 
 	// flash, err := models.GetFlashMessage(r)
@@ -155,7 +161,6 @@ func (app *application) ForumCreateGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) {
-	// Handle POST request for forum create
 	err := r.ParseForm()
 	if err != nil {
 		app.clientError(w, http.StatusBadRequest)
@@ -353,6 +358,11 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 }
 
 func (app *application) forumIsLike(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
+	}
+
 	err := r.ParseForm()
 	if err != nil {
 		app.clientError(w, http.StatusBadRequest)
@@ -360,17 +370,15 @@ func (app *application) forumIsLike(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var likeStatus int
-	if r.Method == http.MethodPost {
-		button := r.PostForm.Get("button")
-		switch button {
-		case "like":
-			likeStatus = 1
-		case "dislike":
-			likeStatus = -1
-		default:
-			app.clientError(w, http.StatusBadRequest)
-			return
-		}
+	button := r.PostForm.Get("button")
+	switch button {
+	case "like":
+		likeStatus = 1
+	case "dislike":
+		likeStatus = -1
+	default:
+		app.clientError(w, http.StatusBadRequest)
+		return
 	}
 
 	path := r.URL.Path
@@ -407,6 +415,77 @@ func (app *application) forumIsLike(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id, err := app.forumLike.LikeOrDislike(form.ForumID, form.UserID, form.LikeStatus)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/forum/view/%d", id), http.StatusSeeOther)
+}
+
+func (app *application) handleForumComment(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		app.forumView(w, r)
+	case http.MethodPost:
+		app.ForumCommentPost(w, r)
+	default:
+		w.Header().Set("Allow", http.MethodPost+", "+http.MethodGet)
+		app.clientError(w, http.StatusMethodNotAllowed)
+	}
+}
+
+func (app *application) ForumCommentPost(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+	comment := r.PostForm.Get("comment")
+
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	idStr := parts[3]
+	forumId, err := strconv.Atoi(idStr)
+	if err != nil || forumId < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	userID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	form := forumCommentForm{
+		ForumID: forumId,
+		UserID:  userID,
+		Comment: comment,
+	}
+
+	form.CheckField(validator.NotBlank(form.Comment), "comment", "This field cannot be blank")
+
+	if !form.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "view.tmpl.html", data)
+		return
+	}
+
+	id, err := app.forumComment.CommentPost(form.ForumID, form.UserID, form.Comment)
 	if err != nil {
 		app.serverError(w, err)
 		return

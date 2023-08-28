@@ -16,8 +16,14 @@ type Forum struct {
 	Liked         bool
 	LikesCount    int
 	DislikesCount int
+	Comment       []userComment
 	Created       time.Time
 	Expires       time.Time
+}
+
+type userComment struct {
+	User    string
+	Comment string
 }
 
 type ForumModel struct {
@@ -129,6 +135,36 @@ func (m *ForumModel) Get(id, userId int) (*Forum, error) {
 
 	f.LikesCount = fs.LikesCount
 	f.DislikesCount = fs.DislikesCount
+
+	stmt = `SELECT u.name, fc.comment
+    FROM forum_comments fc
+    JOIN users u ON fc.user_id = u.id
+    WHERE fc.forum_id = ?`
+
+	rowsL, err := m.DB.Query(stmt, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rowsL.Close()
+
+	var userComments []userComment
+
+	for rowsL.Next() {
+		var userComment userComment
+
+		err := rowsL.Scan(&userComment.User, &userComment.Comment)
+		if err != nil {
+			return nil, err
+		}
+
+		userComments = append(userComments, userComment)
+	}
+
+	if err := rowsL.Err(); err != nil {
+		return nil, err
+	}
+
+	f.Comment = userComments
 
 	return f, nil
 }

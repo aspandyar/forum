@@ -1,4 +1,4 @@
-{{define "title"}}Forum #{{.Forum.ID}}{{end}}
+{{define "title"}}Forum {{with .Forum}}#{{.ID}}{{end}}{{end}}
 
 {{define "main"}}
     {{with .Forum}}
@@ -35,5 +35,27 @@
             </form>
         </div>
     </div>
+    <form method="post" action="/forum/comment/{{.ID}}">
+        <label for="text-input">Enter Text:</label>
+        <input type="text" id="comment" name="comment" required>
+        <button type="submit">Submit</button>
+    </form>
+    <table>
+        <thead>
+            {{range .Comment}}
+            <tr>
+                <td>{{.User}}</td>
+                <td>{{.Comment}}</td>
+            </tr>
+            {{end}}
+        </thead>
+        <tbody>
+            <tr>
+                <th>User</th>
+                <th>Comment</th>
+            </tr>
+        </tbody>
+    </table>
+    
     {{end}}
 {{end}}
