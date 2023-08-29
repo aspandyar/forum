@@ -3,8 +3,10 @@ CREATE TABLE IF NOT EXISTS forums (
     title TEXT NOT NULL,
     content TEXT NOT NULL,
     tags TEXT NOT NULL,
+    user_id INTEGER NOT NULL, 
     created DATETIME NOT NULL,
-    expires DATETIME NOT NULL
+    expires DATETIME NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -24,7 +26,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS forum_likes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     forum_id INTEGER,
-    user_id INTEGER,
+    user_id INTEGER NOT NULL,
     comment_id INTEGER,
     like_status INTEGER NOT NULL,
     FOREIGN KEY (forum_id) REFERENCES forums (id),

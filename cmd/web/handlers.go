@@ -86,6 +86,68 @@ func (app *application) allForum(w http.ResponseWriter, r *http.Request) {
 	app.render(w, http.StatusOK, "allForums.tmpl.html", data)
 }
 
+func (app *application) forumAllUserPosts(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/forum/allPosts" {
+		app.notFound(w)
+		return
+	}
+
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	userID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	forums, err := app.forums.ShowAllUserPosts(userID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	data := app.newTemplateData(r)
+
+	data.Forums = forums
+
+	app.render(w, http.StatusOK, "allForums.tmpl.html", data)
+}
+
+func (app *application) forumAllUserLikes(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/forum/allLikes" {
+		app.notFound(w)
+		return
+	}
+
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	userID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	forums, err := app.forums.ShowAllUserLikes(userID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	data := app.newTemplateData(r)
+
+	data.Forums = forums
+
+	app.render(w, http.StatusOK, "allForums.tmpl.html", data)
+}
+
 func (app *application) forumView(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
@@ -202,7 +264,18 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	id, err := app.forums.Insert(form.Title, form.Content, form.Tags, expires)
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	userID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	id, err := app.forums.Insert(form.Title, form.Content, form.Tags, expires, userID)
 	if err != nil {
 		app.serverError(w, err)
 		return

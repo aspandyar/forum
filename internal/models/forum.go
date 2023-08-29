@@ -49,11 +49,11 @@ func (m *ForumModel) Init(initSqlFileName string) error {
 	return nil
 }
 
-func (m *ForumModel) Insert(title, content, tags string, expires int) (int, error) {
-	stmt := `INSERT INTO forums (title, content, tags, created, expires) 
-	VALUES (?, ?, ?, strftime('%Y-%m-%d %H:%M:%S', 'now'), strftime('%Y-%m-%d %H:%M:%S', 'now', '+' || ? || ' day'));`
+func (m *ForumModel) Insert(title, content, tags string, expires, userID int) (int, error) {
+	stmt := `INSERT INTO forums (title, content, tags, user_id, created, expires) 
+	VALUES (?, ?, ?, ?, strftime('%Y-%m-%d %H:%M:%S', 'now'), strftime('%Y-%m-%d %H:%M:%S', 'now', '+' || ? || ' day'));`
 
-	result, err := m.DB.Exec(stmt, title, content, tags, expires)
+	result, err := m.DB.Exec(stmt, title, content, tags, userID, expires)
 	if err != nil {
 		return 0, err
 	}
@@ -271,6 +271,73 @@ func (m *ForumModel) ShowAll() ([]*Forum, error) {
 	ORDER BY id DESC;`
 
 	rows, err := m.DB.Query(stmt)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	forums := []*Forum{}
+
+	for rows.Next() {
+		f := &Forum{}
+
+		err := rows.Scan(&f.ID, &f.Title, &f.Content, &f.Tags, &f.Created, &f.Expires)
+		if err != nil {
+			return nil, err
+		}
+
+		forums = append(forums, f)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return forums, nil
+}
+
+func (m *ForumModel) ShowAllUserPosts(userID int) ([]*Forum, error) {
+	stmt := `SELECT id, title, content, tags, created, expires
+	FROM forums 
+	WHERE user_id = ?;`
+
+	rows, err := m.DB.Query(stmt, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	forums := []*Forum{}
+
+	for rows.Next() {
+		f := &Forum{}
+
+		err := rows.Scan(&f.ID, &f.Title, &f.Content, &f.Tags, &f.Created, &f.Expires)
+		if err != nil {
+			return nil, err
+		}
+
+		forums = append(forums, f)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return forums, nil
+}
+
+func (m *ForumModel) ShowAllUserLikes(userID int) ([]*Forum, error) { //TODO: likes filter work incorrect in following stmt
+	// FIX!!!!!!
+	stmt := `SELECT f.id, f.title, f.content, f.tags, f.created, f.expires
+	FROM users u
+	JOIN forums f ON f.user_id = u.id
+	JOIN forum_likes fl ON fl.user_id = u.id
+	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now') AND f.user_id = ?;`
+
+	rows, err := m.DB.Query(stmt, userID)
 	if err != nil {
 		return nil, err
 	}

@@ -9,7 +9,6 @@ func (app *application) routes() http.Handler {
 	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
 
 	mux.HandleFunc("/", app.home)
-
 	mux.HandleFunc("/showAll", app.allForum)
 
 	mux.HandleFunc("/forum/view/", app.forumView)
@@ -31,6 +30,12 @@ func (app *application) routes() http.Handler {
 
 	forumLikeCommentStatus := http.HandlerFunc(app.forumIsLikeComment)
 	mux.Handle("/forum/likeComment/", app.requireAuthentication(forumLikeCommentStatus))
+
+	forumAllLikes := http.HandlerFunc(app.forumAllUserLikes)
+	mux.Handle("/forum/allLikes", app.requireAuthentication(forumAllLikes))
+
+	forumAllPosts := http.HandlerFunc(app.forumAllUserPosts)
+	mux.Handle("/forum/allPosts", app.requireAuthentication(forumAllPosts))
 
 	return app.recoverPanic(app.logRequest(secureHeaders(mux)))
 }

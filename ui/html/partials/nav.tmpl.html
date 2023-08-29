@@ -3,8 +3,11 @@
     <div>
         <a href='/'>Home</a>
         <a href='/showAll'>All Forums</a>
+        <a href='/category'>Category</a>
         {{if .IsAuthenticated}}
             <a href='/forum/create'>Create forum</a>
+            <a href='/forum/allLikes'>Your reactions</a>
+            <a href='/forum/allPosts'>Your posts</a>
         {{end}}
     </div>
     <div>
