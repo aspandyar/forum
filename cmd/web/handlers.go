@@ -36,6 +36,7 @@ type forumLikeForm struct {
 	LikeStatus int
 	ForumID    int
 	UserID     int
+	CommentID  int
 	validator.Validator
 }
 
@@ -415,6 +416,72 @@ func (app *application) forumIsLike(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id, err := app.forumLike.LikeOrDislike(form.ForumID, form.UserID, form.LikeStatus)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/forum/view/%d", id), http.StatusSeeOther)
+}
+
+func (app *application) forumIsLikeComment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	var likeStatus int
+	button := r.PostForm.Get("button")
+	switch button {
+	case "like":
+		likeStatus = 1
+	case "dislike":
+		likeStatus = -1
+	default:
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	if len(parts) != 4 || parts[1] != "forum" || parts[2] != "likeComment" {
+		http.NotFound(w, r)
+		return
+	}
+
+	idStr := parts[3]
+	commentId, err := strconv.Atoi(idStr)
+	if err != nil || commentId < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	userID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	form := forumLikeForm{
+		LikeStatus: likeStatus,
+		CommentID:  commentId,
+		UserID:     userID,
+	}
+
+	id, err := app.forumLike.LikeOrDislikeComment(form.CommentID, form.UserID, form.LikeStatus)
 	if err != nil {
 		app.serverError(w, err)
 		return

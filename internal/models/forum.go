@@ -22,8 +22,13 @@ type Forum struct {
 }
 
 type userComment struct {
-	User    string
-	Comment string
+	CommentID     int
+	User          string
+	Comment       string
+	Reacted       bool
+	Liked         bool
+	LikesCount    int
+	DislikesCount int
 }
 
 type ForumModel struct {
@@ -112,19 +117,19 @@ func (m *ForumModel) Get(id, userId int) (*Forum, error) {
 	f.Reacted = reacted
 	f.Liked = liked
 
-	stmt = `SELECT f.id, f.title,
+	stmt = `SELECT f.id,
 		SUM(CASE WHEN l.like_status = 1 THEN 1 ELSE 0 END) AS like_count,
 		SUM(CASE WHEN l.like_status = -1 THEN 1 ELSE 0 END) AS dislike_count
 	FROM forums f
 	LEFT JOIN forum_likes l ON f.id = l.forum_id
 	WHERE f.id = ?
-	GROUP BY f.id, f.title`
+	GROUP BY f.id`
 
 	rows := m.DB.QueryRow(stmt, id)
 
 	fs := &Forum{}
 
-	err = rows.Scan(&fs.ID, &fs.Title, &fs.LikesCount, &fs.DislikesCount)
+	err = rows.Scan(&fs.ID, &fs.LikesCount, &fs.DislikesCount)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNoRecord
@@ -136,7 +141,7 @@ func (m *ForumModel) Get(id, userId int) (*Forum, error) {
 	f.LikesCount = fs.LikesCount
 	f.DislikesCount = fs.DislikesCount
 
-	stmt = `SELECT u.name, fc.comment
+	stmt = `SELECT u.name, fc.comment, fc.id
     FROM forum_comments fc
     JOIN users u ON fc.user_id = u.id
     WHERE fc.forum_id = ?`
@@ -152,9 +157,64 @@ func (m *ForumModel) Get(id, userId int) (*Forum, error) {
 	for rowsL.Next() {
 		var userComment userComment
 
-		err := rowsL.Scan(&userComment.User, &userComment.Comment)
+		err := rowsL.Scan(&userComment.User, &userComment.Comment, &userComment.CommentID)
 		if err != nil {
 			return nil, err
+		}
+
+		var reacted, liked bool
+
+		stmt = `SELECT id, like_status
+		FROM forum_likes
+		WHERE comment_id = ? AND user_id = ?`
+
+		fl := &ForumLikesComment{}
+
+		rowTemp := m.DB.QueryRow(stmt, userComment.CommentID, userId)
+
+		err = rowTemp.Scan(&fl.ID, &fl.LikeStatus)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				reacted = false
+				liked = false
+			} else {
+				return nil, err
+			}
+		}
+
+		if fl.ID == 0 {
+			reacted = false
+			liked = false
+		} else if fl.LikeStatus == 1 {
+			reacted = true
+			liked = true
+		} else if fl.LikeStatus == -1 {
+			reacted = true
+			liked = false
+		}
+
+		userComment.Reacted = reacted
+		userComment.Liked = liked
+
+		stmt = `SELECT f.id,
+		SUM(CASE WHEN l.like_status = 1 THEN 1 ELSE 0 END) AS like_count,
+		SUM(CASE WHEN l.like_status = -1 THEN 1 ELSE 0 END) AS dislike_count
+		FROM forum_comments f
+		LEFT JOIN forum_likes l ON f.id = l.comment_id
+		WHERE f.id = ?
+		GROUP BY f.id`
+
+		rows := m.DB.QueryRow(stmt, userComment.CommentID)
+
+		fs := &ForumComment{}
+
+		err = rows.Scan(&fs.ID, &userComment.LikesCount, &userComment.DislikesCount)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, ErrNoRecord
+			} else {
+				return nil, err
+			}
 		}
 
 		userComments = append(userComments, userComment)

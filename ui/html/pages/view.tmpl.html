@@ -42,20 +42,42 @@
     </form>
     <table>
         <thead>
-            {{range .Comment}}
             <tr>
-                <td>{{.User}}</td>
-                <td>{{.Comment}}</td>
+                <th>Comment</th>
+                <th>User</th>
+                <th>Reaction</th>
             </tr>
-            {{end}}
         </thead>
         <tbody>
+            {{range .Comment}}
+            <form method="post" action="/forum/likeComment/{{.CommentID}}">
             <tr>
-                <th>User</th>
-                <th>Comment</th>
-            </tr>
-        </tbody>
-    </table>
-    
+                <td>{{.Comment}}</td>
+                <td>{{.User}}</td>
+                <td>
+                    {{if .Reacted}}
+                        {{if .Liked}}
+                        <button class="like-button liked" type="submit" name="button" value="like">like</button>
+                            <span class="likes">{{.LikesCount}}</span>
+                            <button class="dislike-button not-disliked" type="submit" name="button" value="dislike">dislike</button>
+                            <span class="dislikes">{{.DislikesCount}}</span>
+                        {{else}}
+                            <button class="like-button not-liked" type="submit" name="button" value="like">like</button>
+                            <span class="likes">{{.LikesCount}}</span>
+                            <button class="dislike-button disliked" type="submit" name="button" value="dislike">dislike</button>
+                            <span class="dislikes">{{.DislikesCount}}</span>
+                        {{end}}
+                    {{else}}
+                        <button class="like-button not-liked" type="submit" name="button" value="like">like</button>
+                        <span class="likes">{{.LikesCount}}</span>
+                        <button class="dislike-button not-disliked" type="submit" name="button" value="dislike">dislike</button>
+                        <span class="dislikes">{{.DislikesCount}}</span>
+                    {{end}}
+                    </td>
+                </tr>
+                </form>
+                {{end}}
+            </tbody>
+        </table>
     {{end}}
 {{end}}

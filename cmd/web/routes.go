@@ -29,5 +29,8 @@ func (app *application) routes() http.Handler {
 	forumCommentStatus := http.HandlerFunc(app.handleForumComment)
 	mux.Handle("/forum/comment/", app.requireAuthentication(forumCommentStatus))
 
+	forumLikeCommentStatus := http.HandlerFunc(app.forumIsLikeComment)
+	mux.Handle("/forum/likeComment/", app.requireAuthentication(forumLikeCommentStatus))
+
 	return app.recoverPanic(app.logRequest(secureHeaders(mux)))
 }

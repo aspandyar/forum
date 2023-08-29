@@ -22,10 +22,12 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE TABLE IF NOT EXISTS forum_likes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    forum_id INTEGER NOT NULL,
-    user_id INTEGER NOT NULL,
+    forum_id INTEGER,
+    user_id INTEGER,
+    comment_id INTEGER,
     like_status INTEGER NOT NULL,
     FOREIGN KEY (forum_id) REFERENCES forums (id),
+    FOREIGN KEY (comment_id) REFERENCES forum_comments (id),
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
