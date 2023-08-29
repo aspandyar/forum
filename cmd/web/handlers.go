@@ -15,6 +15,7 @@ import (
 type forumCreateForm struct {
 	Title   string
 	Content string
+	Tags    string
 	Expires int
 	validator.Validator
 }
@@ -174,9 +175,18 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	selectedTags := r.Form["tags"]
+	customTagsStr := r.PostForm.Get("custom_tags")
+	customTags := strings.Split(customTagsStr, ",")
+
+	// Combine selected and custom tags
+	tags := append(selectedTags, customTags...)
+	tagsStr := strings.Join(tags, ", ")
+
 	form := forumCreateForm{
 		Title:   r.PostForm.Get("title"),
 		Content: r.PostForm.Get("content"),
+		Tags:    tagsStr,
 		Expires: expires,
 	}
 
@@ -192,7 +202,7 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	id, err := app.forums.Insert(form.Title, form.Content, expires)
+	id, err := app.forums.Insert(form.Title, form.Content, form.Tags, expires)
 	if err != nil {
 		app.serverError(w, err)
 		return

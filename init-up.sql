@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS forums (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     content TEXT NOT NULL,
+    tags TEXT NOT NULL,
     created DATETIME NOT NULL,
     expires DATETIME NOT NULL
 );

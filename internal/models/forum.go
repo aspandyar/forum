@@ -12,6 +12,7 @@ type Forum struct {
 	ID            int
 	Title         string
 	Content       string
+	Tags          string
 	Reacted       bool
 	Liked         bool
 	LikesCount    int
@@ -48,11 +49,11 @@ func (m *ForumModel) Init(initSqlFileName string) error {
 	return nil
 }
 
-func (m *ForumModel) Insert(title string, content string, expires int) (int, error) {
-	stmt := `INSERT INTO forums (title, content, created, expires) 
-	VALUES (?, ?, strftime('%Y-%m-%d %H:%M:%S', 'now'), strftime('%Y-%m-%d %H:%M:%S', 'now', '+' || ? || ' day'));`
+func (m *ForumModel) Insert(title, content, tags string, expires int) (int, error) {
+	stmt := `INSERT INTO forums (title, content, tags, created, expires) 
+	VALUES (?, ?, ?, strftime('%Y-%m-%d %H:%M:%S', 'now'), strftime('%Y-%m-%d %H:%M:%S', 'now', '+' || ? || ' day'));`
 
-	result, err := m.DB.Exec(stmt, title, content, expires)
+	result, err := m.DB.Exec(stmt, title, content, tags, expires)
 	if err != nil {
 		return 0, err
 	}
@@ -66,7 +67,7 @@ func (m *ForumModel) Insert(title string, content string, expires int) (int, err
 }
 
 func (m *ForumModel) Get(id, userId int) (*Forum, error) {
-	stmt := `SELECT id, title, content, created, expires
+	stmt := `SELECT id, title, content, tags, created, expires
 	FROM forums
 	WHERE expires > datetime('now') AND id = ?;`
 
@@ -74,7 +75,7 @@ func (m *ForumModel) Get(id, userId int) (*Forum, error) {
 
 	f := &Forum{}
 
-	err := row.Scan(&f.ID, &f.Title, &f.Content, &f.Created, &f.Expires)
+	err := row.Scan(&f.ID, &f.Title, &f.Content, &f.Tags, &f.Created, &f.Expires)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNoRecord
@@ -230,7 +231,7 @@ func (m *ForumModel) Get(id, userId int) (*Forum, error) {
 }
 
 func (m *ForumModel) Latest() ([]*Forum, error) {
-	stmt := `SELECT id, title, content, created, expires
+	stmt := `SELECT id, title, content, tags, created, expires
 	FROM forums
 	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now')
 	ORDER BY id DESC
@@ -248,7 +249,7 @@ func (m *ForumModel) Latest() ([]*Forum, error) {
 	for rows.Next() {
 		f := &Forum{}
 
-		err := rows.Scan(&f.ID, &f.Title, &f.Content, &f.Created, &f.Expires)
+		err := rows.Scan(&f.ID, &f.Title, &f.Content, &f.Tags, &f.Created, &f.Expires)
 		if err != nil {
 			return nil, err
 		}
@@ -264,7 +265,7 @@ func (m *ForumModel) Latest() ([]*Forum, error) {
 }
 
 func (m *ForumModel) ShowAll() ([]*Forum, error) {
-	stmt := `SELECT id, title, content, created, expires
+	stmt := `SELECT id, title, content, tags, created, expires
 	FROM forums
 	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now')
 	ORDER BY id DESC;`
@@ -281,7 +282,7 @@ func (m *ForumModel) ShowAll() ([]*Forum, error) {
 	for rows.Next() {
 		f := &Forum{}
 
-		err := rows.Scan(&f.ID, &f.Title, &f.Content, &f.Created, &f.Expires)
+		err := rows.Scan(&f.ID, &f.Title, &f.Content, &f.Tags, &f.Created, &f.Expires)
 		if err != nil {
 			return nil, err
 		}
