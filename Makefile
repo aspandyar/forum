@@ -2,6 +2,7 @@ DOCKER_USERNAME ?= forumContainer
 APPLICATION_NAME ?= forum
 
 build:
+	touch st.db
 	docker build --tag ${APPLICATION_NAME} .
 
 run:
