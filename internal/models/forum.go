@@ -329,15 +329,24 @@ func (m *ForumModel) ShowAllUserPosts(userID int) ([]*Forum, error) {
 	return forums, nil
 }
 
-func (m *ForumModel) ShowAllUserLikes(userID int) ([]*Forum, error) { //TODO: likes filter work incorrect in following stmt
-	// FIX!!!!!!
+func (m *ForumModel) ShowAllUserLikes(userID int) ([]*Forum, error) {
 	stmt := `SELECT f.id, f.title, f.content, f.tags, f.created, f.expires
-	FROM users u
-	JOIN forums f ON f.user_id = u.id
-	JOIN forum_likes fl ON fl.user_id = u.id
-	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now') AND f.user_id = ?;`
+	FROM forums f
+	INNER JOIN (
+		SELECT forum_id
+		FROM forum_likes
+		WHERE user_id = ?
+		
+		UNION
+		
+		SELECT fc.forum_id
+		FROM forum_comments fc
+		JOIN forum_likes fl ON fl.comment_id = fc.id 
+		WHERE fl.user_id = ?
+	) AS relevant_forums ON f.id = relevant_forums.forum_id
+	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now');`
 
-	rows, err := m.DB.Query(stmt, userID)
+	rows, err := m.DB.Query(stmt, userID, userID)
 	if err != nil {
 		return nil, err
 	}
