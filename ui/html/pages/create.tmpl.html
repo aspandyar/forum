@@ -26,6 +26,9 @@
             <input type='radio' name='expires' value='1' {{if (eq .Form.Expires 1)}}checked{{end}}> One Day
         </div>
         <div>
+            {{with .Form.FieldErrors.tags}}
+                <label class='error'>{{.}}</label>
+            {{end}}
             <label>Choose Tags:</label><br>
             <input type="checkbox" name="tags" value="tag1"> Tag 1<br>
             <input type="checkbox" name="tags" value="tag2"> Tag 2<br>

@@ -2,18 +2,24 @@
 
 {{define "main"}}
     {{with .Forum}}
-    <div class='snippet'>
-        <div class='metadata'>
-            <strong>{{.Title}}</strong>
-            <span>#{{.ID}}</span><br>
-            <span>{{.Tags}}</span>
+    <article class='forum'>
+        <header class='forum-header'>
+            <h1>{{.Title}}</h1>
+            <span class='forum-id'>#{{.ID}}</span>
+            <ul class='tags'>
+                {{range .TagsOutput}}
+                    <li>{{.}}</li>
+                {{end}}
+            </ul>
+        </header>
+        <div class='special-box'>
+            <pre><code class='forum-content'>{{.Content}}</code></pre>
         </div>
-        <pre><code>{{.Content}}</code></pre>
-        <div class='metadata'>
-            <time>Created: {{humanDate .Created}}</time>
-            <time>Expires: {{humanDate .Expires}}</time>
-        </div>
-        <div class='metadata'>
+        <section class='special-box metadata'>
+            <time class='forum-created'>Created: {{humanDate .Created}}</time>
+            <time class='forum-expires'>Expires: {{humanDate .Expires}}</time>
+        </section>
+        <section class='reactions'>
             <form method="post" action="/forum/like/{{.ID}}">
                 {{if .Reacted}}
                     {{if .Liked}}
@@ -34,14 +40,14 @@
                     <span class="dislikes">{{.DislikesCount}}</span>
                 {{end}}
             </form>
-        </div>
-    </div>
+        </section>
+    </article>
     <form method="post" action="/forum/comment/{{.ID}}">
-        <label for="text-input">Enter Text:</label>
+        <label for="comment">Enter Text:</label>
         <input type="text" id="comment" name="comment" required>
         <button type="submit">Submit</button>
     </form>
-    <table>
+    <table class='comments'>
         <thead>
             <tr>
                 <th>Comment</th>
@@ -49,13 +55,13 @@
                 <th>Reaction</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="comment-table-body">
             {{range .Comment}}
             <form method="post" action="/forum/likeComment/{{.CommentID}}">
             <tr>
-                <td>{{.Comment}}</td>
+                <td class='comment-text'>{{.Comment}}</td>
                 <td>{{.User}}</td>
-                <td>
+                <td class='comment-reactions'>
                     {{if .Reacted}}
                         {{if .Liked}}
                         <button class="like-button liked" type="submit" name="button" value="like">like</button>
@@ -74,11 +80,11 @@
                         <button class="dislike-button not-disliked" type="submit" name="button" value="dislike">dislike</button>
                         <span class="dislikes">{{.DislikesCount}}</span>
                     {{end}}
-                    </td>
-                </tr>
-                </form>
-                {{end}}
-            </tbody>
-        </table>
+                </td>
+            </tr>
+            </form>
+            {{end}}
+        </tbody>
+    </table>
     {{end}}
 {{end}}

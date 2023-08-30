@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"errors"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -61,4 +62,37 @@ func MinChars(value string, n int) bool {
 
 func Matches(value string, rx *regexp.Regexp) bool {
 	return rx.MatchString(value)
+}
+
+func IncorrectInput(value string) bool {
+	return checkTags(value) == nil
+}
+
+func checkTags(tagStr string) error {
+	if strings.TrimSpace(tagStr) == "" {
+		return nil
+	}
+	// Check for valid characters
+	validCharsRegex := regexp.MustCompile(`^[A-Za-z0-9, ]+$`)
+	if !validCharsRegex.MatchString(tagStr) {
+		return errors.New("invalid characters in tags")
+	}
+
+	// Remove additional spaces
+	tagStr = strings.TrimSpace(tagStr)
+
+	// Check for valid start and end
+	if len(tagStr) > 0 && !isLetter(tagStr[0]) {
+		return errors.New("tag should start with a letter")
+	}
+
+	if len(tagStr) > 0 && !isLetter(tagStr[len(tagStr)-1]) {
+		return errors.New("tag should end with a letter")
+	}
+
+	return nil
+}
+
+func isLetter(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
 }

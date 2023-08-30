@@ -1,23 +1,23 @@
 {{define "nav"}}
 <nav>
-    <div>
-        <a href='/'>Home</a>
-        <a href='/showAll'>All Forums</a>
-        <a href='/category'>Category</a>
+    <div class="nav-links">
+        <a href="/">Home</a>|
+        <a href="/showAll">All Forums</a>|
+        <a href="/category">Category</a>
         {{if .IsAuthenticated}}
-            <a href='/forum/create'>Create forum</a>
-            <a href='/forum/allLikes'>Your reactions</a>
-            <a href='/forum/allPosts'>Your posts</a>
+            | <a href="/forum/create">Create forum</a>|
+            <a href="/forum/allLikes">Your reactions</a>|
+            <a href="/forum/allPosts">Your posts</a>
         {{end}}
     </div>
-    <div>
+    <div class="auth-section">
         {{if .IsAuthenticated}}
-            <form action='/user/logout' method='POST'>
+            <form action="/user/logout" method="POST">
                 <button>Logout</button>
             </form>
         {{else}}
-            <a href='/user/signup'>Signup</a>
-            <a href='/user/login'>Login</a>
+            <a href="/user/signup">Signup</a>
+            <a href="/user/login">Login</a>
         {{end}}
     </div>
 </nav>

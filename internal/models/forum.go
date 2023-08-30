@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -13,6 +14,7 @@ type Forum struct {
 	Title         string
 	Content       string
 	Tags          string
+	TagsOutput    []string
 	Reacted       bool
 	Liked         bool
 	LikesCount    int
@@ -83,6 +85,8 @@ func (m *ForumModel) Get(id, userId int) (*Forum, error) {
 			return nil, err
 		}
 	}
+
+	f.TagsOutput = strings.Split(f.Tags, ", ")
 
 	var reacted, liked bool
 
