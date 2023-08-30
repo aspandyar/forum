@@ -14,6 +14,7 @@ type Validator struct {
 	FieldErrors    map[string]string
 }
 
+// j
 func (v *Validator) Valid() bool {
 	return len(v.FieldErrors) == 0 && len(v.NonFieldErrors) == 0
 }

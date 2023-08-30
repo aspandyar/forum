@@ -12,7 +12,7 @@ type templateData struct {
 	CurrentYear     int
 	Forum           *models.Forum
 	Forums          []*models.Forum
-	Form            any
+	Form            interface{}
 	Flash           string
 	IsAuthenticated bool
 }
