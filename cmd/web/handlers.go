@@ -284,6 +284,7 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	form.CheckField(validator.IncorrectInput(form.Tags), "tags", "Incorrect tags formation")
+	form.CheckField(validator.MaxChars(form.Tags, 50), "tags", "This field cannot be more than 50 characters long")
 	form.CheckField(validator.NotBlank(form.Title), "title", "This field cannot be blank")
 	form.CheckField(validator.MaxChars(form.Title, 100), "title", "This field cannot be more than 100 characters long")
 	form.CheckField(validator.NotBlank(form.Content), "content", "This field cannot be blank")
