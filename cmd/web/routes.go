@@ -13,6 +13,8 @@ func (app *application) routes() http.Handler {
 
 	mux.HandleFunc("/forum/view/", app.forumView)
 
+	mux.HandleFunc("/forum/category", app.forumCategory)
+
 	mux.HandleFunc("/user/signup", app.userSignup)
 	mux.HandleFunc("/user/login", app.userLogin)
 

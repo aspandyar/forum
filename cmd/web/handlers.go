@@ -148,6 +148,47 @@ func (app *application) forumAllUserLikes(w http.ResponseWriter, r *http.Request
 	app.render(w, http.StatusOK, "allForums.tmpl.html", data)
 }
 
+func (app *application) forumCategory(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/forum/category" {
+		app.notFound(w)
+		return
+	}
+
+	var forum []*models.Forum
+	var err error
+	if r.Method == http.MethodPost {
+		err := r.ParseForm()
+		if err != nil {
+			app.clientError(w, http.StatusBadRequest)
+			return
+		}
+
+		selectedTags := r.Form["tags"]
+		customTagsStr := r.PostForm.Get("custom_tags")
+
+		tags := app.processTags(selectedTags, customTagsStr)
+
+		forum, err = app.forums.ShowCategory(tags)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+	} else {
+		forum, err = app.forums.ShowAll()
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+	}
+	// tagsStr := strings.Join(tags, ", ")
+
+	data := app.newTemplateData(r)
+
+	data.Forums = forum
+
+	app.render(w, http.StatusOK, "category.tmpl.html", data)
+}
+
 func (app *application) forumView(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
@@ -232,10 +273,7 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 	selectedTags := r.Form["tags"]
 	customTagsStr := r.PostForm.Get("custom_tags")
 
-	customTags := strings.Split(customTagsStr, ",")
-
-	// Combine selected and custom tags
-	tags := append(selectedTags, customTags...)
+	tags := app.processTags(selectedTags, customTagsStr)
 	tagsStr := strings.Join(tags, ", ")
 
 	form := forumCreateForm{
