@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -46,6 +49,21 @@ type forumCommentForm struct {
 	UserID  int
 	Comment string
 	validator.Validator
+}
+
+// Замените на свои данные OAuth 2.0
+const (
+	clientID     = "30519126384-v31k4ahraui4a59kmev21ju6353ne17p.apps.googleusercontent.com"
+	clientSecret = "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"
+	redirectURI  = "http://localhost:4000/callback"
+)
+
+// Данные о пользователе
+type UserInfo struct {
+	ID       string `json:"id"`
+	Email    string `json:"email"`
+	Name     string `json:"name"`
+	Password string
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -377,6 +395,119 @@ func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 }
 
+func (app *application) handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
+
+	// Формирование URL для перенаправления пользователя на страницу аутентификации Google
+	authURL := fmt.Sprintf("https://accounts.google.com/o/oauth2/auth?client_id=%s&redirect_uri=%s&response_type=code&scope=email profile", clientID, redirectURI)
+	http.Redirect(w, r, authURL, http.StatusFound)
+}
+
+func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
+	// Получение кода авторизации из запроса
+	code := r.URL.Query().Get("code")
+
+	// Обмен кода авторизации на токен доступа
+	tokenURL := "https://accounts.google.com/o/oauth2/token"
+	data := fmt.Sprintf("code=%s&client_id=%s&client_secret=%s&redirect_uri=%s&grant_type=authorization_code", code, clientID, clientSecret, redirectURI)
+
+	resp, err := http.Post(tokenURL, "application/x-www-form-urlencoded", strings.NewReader(data))
+	if err != nil {
+		http.Error(w, "Failed to exchange code for token", http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	var tokenResponse map[string]interface{}
+
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
+		http.Error(w, "Failed to decode token response", http.StatusInternalServerError)
+		return
+	}
+	//fmt.Println(tokenResponse)
+	accessToken := tokenResponse["access_token"].(string)
+
+	// Получение данных о пользователе с использованием токена доступа
+	userInfoURL := "https://www.googleapis.com/oauth2/v2/userinfo"
+	req, _ := http.NewRequest("GET", userInfoURL, nil)
+	req.Header.Add("Authorization", "Bearer "+accessToken)
+
+	userInfoResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		http.Error(w, "Failed to fetch user info", http.StatusInternalServerError)
+		return
+	}
+	defer userInfoResp.Body.Close()
+
+	var userInfo UserInfo
+	if err := json.NewDecoder(userInfoResp.Body).Decode(&userInfo); err != nil {
+		http.Error(w, "Failed to decode user info response", http.StatusInternalServerError)
+		return
+	}
+
+	// Теперь у вас есть данные о пользователе
+	// fmt.Fprintf(w, "User ID: %s\n", userInfo.ID)
+	// fmt.Fprintf(w, "User Email: %s\n", userInfo.Email)
+	// fmt.Fprintf(w, "User Name: %s\n", userInfo.Name)
+
+	userInfo.Password, err = generateRandomPassword(8)
+	if err != nil {
+		app.clientError(w, http.StatusInternalServerError)
+		return
+	}
+
+	err = app.users.Insert(userInfo.Name, userInfo.Email, userInfo.Password)
+	if err != nil {
+		if errors.Is(err, models.ErrDuplicateEmail) {
+			userID, err := app.users.Authenticate(userInfo.Email, userInfo.Password)
+			// Если пользователь уже существует, создаем сессию и устанавливаем куки
+			session, err := app.sessions.CreateSession(userID)
+			if err != nil {
+				app.serverError(w, err)
+				return
+			}
+			models.SetSessionCookie(w, session.Token, session.Expiry)
+
+			// Перенаправляем пользователя на страницу "/create/forum"
+			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
+			return
+
+		} else {
+			app.serverError(w, err)
+
+		}
+		return
+	}
+
+	userID, err := app.users.Authenticate(userInfo.Email, userInfo.Password)
+	if err != nil {
+		if errors.Is(err, models.ErrInvalidCredentials) {
+			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
+
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+
+	session, err := app.sessions.CreateSession(userID)
+	if err != nil {
+		//fmt.Println("errrrooorrr in CreateSessionnn")
+		app.serverError(w, err)
+		return
+	}
+	models.SetSessionCookie(w, session.Token, session.Expiry)
+	http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
+}
+
+func generateRandomPassword(length int) (string, error) {
+	bytes := make([]byte, length)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(bytes), nil
+}
+
 func (app *application) userLogin(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -463,11 +594,14 @@ func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 func (app *application) isAuthenticated(r *http.Request) bool {
 	cookie, err := r.Cookie("session")
 	if err != nil {
+		fmt.Println("BAD CCCCOOOOOKKKKKIIIIIEEEE")
 		return false
 	}
 
 	_, expiry, err := app.sessions.GetSession(cookie.Value)
 	if err != nil {
+		fmt.Println("9999999 GET sessionnn")
+
 		return false
 	}
 

@@ -48,7 +48,7 @@ func (m *SessionModel) CreateSession(userID int) (*Session, error) {
 		UserID: userID,
 		Expiry: expiration,
 	}
-
+	//fmt.Println("SESSION:", session)
 	return session, nil
 }
 
