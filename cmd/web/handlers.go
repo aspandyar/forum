@@ -382,7 +382,8 @@ func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
 	err = app.users.Insert(form.Name, form.Email, form.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
-			form.AddFieldError("email", "Email address is already in use")
+			form.AddFieldError("email", "Email or name address is already in use")
+			form.AddFieldError("name", "Email or name address is already in use")
 			data := app.newTemplateData(r)
 			data.Form = form
 			app.render(w, http.StatusUnprocessableEntity, "signup.tmpl.html", data)
