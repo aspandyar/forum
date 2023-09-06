@@ -2,7 +2,7 @@
 FROM golang:1.20-alpine AS build
 
 # Set metadata
-LABEL version="1.0" maintainer="asharip <stephen.novel@gmail.com>"
+LABEL version="1.0" maintainer="asharip <aspandyart@gmail.com>"
 
 ENV GO111MODULE=on
 
