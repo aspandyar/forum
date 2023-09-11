@@ -15,6 +15,16 @@
         <div class='special-box'>
             <pre><code class='forum-content'>{{.Content}}</code></pre>
         </div>
+        <div>
+            <img id="image" onclick="window.open('{{.ImagePath}}','targetWindow', 'toolbar=no, location=no, status=no, menubar=no, scrollbars=yes, resizable=yes, width=1090px, height=550px, top=25px left=120px'); return false;" src="{{.ImagePath}}" alt="Image">
+        </div><br>
+        <div>
+            {{if .ImagePath}}
+                    <button type="button" onclick="show()" id="btnID">
+                        Show Image
+                    </button>
+            {{end}}
+        </div><br>
         <section class='special-box metadata'>
             <time class='forum-created'>Created: {{humanDate .Created}}</time>
             <time class='forum-expires'>Expires: {{humanDate .Expires}}</time>

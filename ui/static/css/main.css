@@ -245,3 +245,13 @@ input[type="submit"]:hover {
 .error {
     color: red;
 }
+
+img {
+    width: 300px; 
+    height: 200px;
+    cursor: pointer; 
+}
+
+#image {
+    display: none;
+}

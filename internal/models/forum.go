@@ -22,6 +22,7 @@ type Forum struct {
 	Comment       []userComment
 	Created       time.Time
 	Expires       time.Time
+	ImagePath     string
 }
 
 type userComment struct {
@@ -51,11 +52,11 @@ func (m *ForumModel) Init(initSqlFileName string) error {
 	return nil
 }
 
-func (m *ForumModel) Insert(title, content, tags string, expires, userID int) (int, error) {
-	stmt := `INSERT INTO forums (title, content, tags, user_id, created, expires) 
-	VALUES (?, ?, ?, ?, strftime('%Y-%m-%d %H:%M:%S', 'now'), strftime('%Y-%m-%d %H:%M:%S', 'now', '+' || ? || ' day'));`
+func (m *ForumModel) Insert(title, content, tags string, expires, userID int, imagePath string) (int, error) {
+	stmt := `INSERT INTO forums (title, content, tags, user_id, created, expires, image_path) 
+	VALUES (?, ?, ?, ?, strftime('%Y-%m-%d %H:%M:%S', 'now'), strftime('%Y-%m-%d %H:%M:%S', 'now', '+' || ? || ' day'), ?);`
 
-	result, err := m.DB.Exec(stmt, title, content, tags, userID, expires)
+	result, err := m.DB.Exec(stmt, title, content, tags, userID, expires, imagePath)
 	if err != nil {
 		return 0, err
 	}
@@ -69,7 +70,7 @@ func (m *ForumModel) Insert(title, content, tags string, expires, userID int) (i
 }
 
 func (m *ForumModel) Get(id, userId int) (*Forum, error) {
-	stmt := `SELECT id, title, content, tags, created, expires
+	stmt := `SELECT id, title, content, tags, created, expires, image_path
 	FROM forums
 	WHERE expires > datetime('now') AND id = ?;`
 
@@ -77,7 +78,7 @@ func (m *ForumModel) Get(id, userId int) (*Forum, error) {
 
 	f := &Forum{}
 
-	err := row.Scan(&f.ID, &f.Title, &f.Content, &f.Tags, &f.Created, &f.Expires)
+	err := row.Scan(&f.ID, &f.Title, &f.Content, &f.Tags, &f.Created, &f.Expires, &f.ImagePath)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNoRecord

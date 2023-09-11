@@ -1,7 +1,7 @@
 {{define "title"}}Create a New Forum{{end}}
 
 {{define "main"}}
-    <form action='/forum/create' method='POST'>
+    <form action='/forum/create' method='POST' enctype="multipart/form-data">
         <div>
             <label>Title:</label>
             {{with .Form.FieldErrors.title}}
@@ -34,6 +34,10 @@
             <input type="checkbox" name="tags" value="tag2"> tag2<br>
             <input type="checkbox" name="tags" value="tag3"> tag3<br>
             <textarea name="custom_tags" placeholder="Enter custom tags (comma-separated)"></textarea><br>
+        </div>
+        <div>
+            <label for="image-upload">Image:</label>
+            <input type="file" name="image-upload" id="image-upload"><br>
         </div>
         <div>
             <input type='submit' value='Publish snippet'>

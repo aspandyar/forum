@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS forums (
     user_id INTEGER NOT NULL, 
     created DATETIME NOT NULL,
     expires DATETIME NOT NULL,
+    image_path TEXT,
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
 

@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -16,10 +19,11 @@ import (
 )
 
 type forumCreateForm struct {
-	Title   string
-	Content string
-	Tags    string
-	Expires int
+	Title     string
+	Content   string
+	Tags      string
+	Expires   int
+	ImagePath string
 	validator.Validator
 }
 
@@ -282,6 +286,45 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	maxFileSize := int64(20 * 1024 * 1024)
+	err = r.ParseMultipartForm(maxFileSize) //check for size (20mb)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	file, fileHeader, err := r.FormFile("image-upload")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	defer file.Close()
+
+	filename := fileHeader.Filename
+	extension := filepath.Ext(filename)
+	newFilename := strconv.FormatInt(time.Now().UnixNano(), 10) + extension
+	imagePath := filepath.Join("/static/images", newFilename)
+	imageOut := "/ui" + imagePath
+
+	f, err := os.OpenFile("."+imageOut, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	defer f.Close()
+
+	fileSize := fileHeader.Size
+	if fileSize > maxFileSize {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	_, err = io.Copy(f, file)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
 	expires, err := strconv.Atoi(r.PostForm.Get("expires"))
 	if err != nil {
 		app.clientError(w, http.StatusBadGateway)
@@ -295,10 +338,11 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 	tagsStr := strings.Join(tags, ", ")
 
 	form := forumCreateForm{
-		Title:   r.PostForm.Get("title"),
-		Content: r.PostForm.Get("content"),
-		Tags:    tagsStr,
-		Expires: expires,
+		Title:     r.PostForm.Get("title"),
+		Content:   r.PostForm.Get("content"),
+		Tags:      tagsStr,
+		Expires:   expires,
+		ImagePath: imagePath,
 	}
 
 	form.CheckField(validator.IncorrectInput(form.Tags), "tags", "Incorrect tags formation")
@@ -326,7 +370,7 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	id, err := app.forums.Insert(form.Title, form.Content, form.Tags, expires, userID)
+	id, err := app.forums.Insert(form.Title, form.Content, form.Tags, expires, userID, imagePath)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -595,14 +639,11 @@ func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 func (app *application) isAuthenticated(r *http.Request) bool {
 	cookie, err := r.Cookie("session")
 	if err != nil {
-		fmt.Println("BAD CCCCOOOOOKKKKKIIIIIEEEE")
 		return false
 	}
 
 	_, expiry, err := app.sessions.GetSession(cookie.Value)
 	if err != nil {
-		fmt.Println("9999999 GET sessionnn")
-
 		return false
 	}
 
