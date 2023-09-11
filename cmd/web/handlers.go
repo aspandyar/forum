@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -63,6 +66,7 @@ type UserInfo struct {
 	ID       string `json:"id"`
 	Email    string `json:"email"`
 	Name     string `json:"name"`
+	Login    string `json:"login"`
 	Password string
 }
 
@@ -445,11 +449,6 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Теперь у вас есть данные о пользователе
-	// fmt.Fprintf(w, "User ID: %s\n", userInfo.ID)
-	// fmt.Fprintf(w, "User Email: %s\n", userInfo.Email)
-	// fmt.Fprintf(w, "User Name: %s\n", userInfo.Name)
-
 	userInfo.Password, err = generateRandomPassword(8)
 	if err != nil {
 		app.clientError(w, http.StatusInternalServerError)
@@ -507,6 +506,174 @@ func generateRandomPassword(length int) (string, error) {
 		return "", err
 	}
 	return base64.URLEncoding.EncodeToString(bytes), nil
+}
+
+// Greate GIT HUB AUTOTEFICATION
+
+func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, githubData string) {
+	if githubData == "" {
+		// Unauthorized users get an unauthorized message
+		fmt.Fprintf(w, "UNAUTHORIZED!")
+		return
+	}
+
+	// Set return type JSON
+	w.Header().Set("Content-type", "application/json")
+
+	userInfo := UserInfo{}
+	json.Unmarshal([]byte(githubData), &userInfo)
+
+	//fmt.Fprintf(w, "Operation: \n Login:%s\n Name:%s\n Email:%s\n", data.Login, data.Name, data.Email)
+
+	err := app.users.Insert(userInfo.Name, userInfo.Email, userInfo.Password)
+	if err != nil {
+		if errors.Is(err, models.ErrDuplicateEmail) {
+			userID, err := app.users.Authenticate(userInfo.Email, userInfo.Password)
+			// Если пользователь уже существует, создаем сессию и устанавливаем куки
+			session, err := app.sessions.CreateSession(userID)
+			if err != nil {
+				app.serverError(w, err)
+				return
+			}
+			models.SetSessionCookie(w, session.Token, session.Expiry)
+
+			// Перенаправляем пользователя на страницу "/create/forum"
+			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
+			return
+
+		} else {
+			app.serverError(w, err)
+
+		}
+		return
+	}
+
+	userID, err := app.users.Authenticate(userInfo.Email, userInfo.Password)
+	if err != nil {
+		if errors.Is(err, models.ErrInvalidCredentials) {
+			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
+
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+
+	session, err := app.sessions.CreateSession(userID)
+	if err != nil {
+		//fmt.Println("errrrooorrr in CreateSessionnn")
+		app.serverError(w, err)
+		return
+	}
+	models.SetSessionCookie(w, session.Token, session.Expiry)
+	http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
+
+}
+
+// func homeHandler(w http.ResponseWriter, r *http.Request) {
+// 	fmt.Fprintf(w, `<a href="/login/github/">SIGN IN with GITHUB</a>`)
+// }
+
+func (app *application) gitHubLoginHandler(w http.ResponseWriter, r *http.Request) {
+	// Get the environment variable
+	//githubClientID := getGitHubClientId()
+
+	// Create the dynamic redirect URL for login
+	redirectURL := fmt.Sprintf(
+		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s",
+		clientID,
+		"http://localhost:4000/login/github/callback",
+	)
+
+	http.Redirect(w, r, redirectURL, 301)
+}
+
+func (app *application) gitHubCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	code := r.URL.Query().Get("code")
+	gitHubAccessToken := app.getGitHubAccessToken(code)
+	gitHubData := getGitHubData(gitHubAccessToken)
+	//fmt.Println("GITHUBDATA:", gitHubData)
+	app.loggedinHandler(w, r, gitHubData)
+
+}
+func (app *application) getGitHubAccessToken(code string) string {
+	// clientID := getGitHubClientId()
+	// clientSecret := getGitHubClientSecret()
+
+	requestBodyMap := map[string]string{
+		"client_id":     clientID,
+		"client_secret": clientSecret,
+		"code":          code,
+	}
+
+	requestJSON, _ := json.Marshal(requestBodyMap)
+	req, reqerr := http.NewRequest(
+		"POST",
+		"https://github.com/login/oauth/access_token",
+		bytes.NewBuffer(requestJSON),
+	)
+	if reqerr != nil {
+		log.Panic("Request creation failed")
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	// Get the response
+	//fmt.Println(req)
+	resp, resperr := http.DefaultClient.Do(req)
+	//fmt.Println("RESPERR:", resperr)
+
+	if resperr != nil {
+		log.Panic("Request failed by get the response")
+	}
+
+	// Response body converted to stringified JSON
+	respbody, _ := ioutil.ReadAll(resp.Body)
+
+	// Represents the response received from Github
+	type githubAccessTokenResponse struct {
+		AccessToken string `json:"access_token"`
+		TokenType   string `json:"token_type"`
+		Scope       string `json:"scope"`
+	}
+
+	// Convert stringified JSON to a struct object of type githubAccessTokenResponse
+	var ghresp githubAccessTokenResponse
+	json.Unmarshal(respbody, &ghresp)
+
+	// Return the access token (as the rest of the
+	// details are relatively unnecessary for us)
+	return ghresp.AccessToken
+
+}
+func getGitHubData(accessToken string) string {
+	// Get request to a set URL
+	req, reqerr := http.NewRequest(
+		"GET",
+		"https://api.github.com/user",
+		nil,
+	)
+	if reqerr != nil {
+		log.Panic("API Request creation failed")
+	}
+
+	// Set the Authorization header before sending the request
+	// Authorization: token XXXXXXXXXXXXXXXXXXXXXXXXXXX
+	authorizationHeaderValue := fmt.Sprintf("token %s", accessToken)
+	req.Header.Set("Authorization", authorizationHeaderValue)
+
+	// Make the request
+	resp, resperr := http.DefaultClient.Do(req)
+	if resperr != nil {
+		log.Panic("Request failed by Make the request")
+	}
+
+	// Read the response as a byte slice
+	respbody, _ := ioutil.ReadAll(resp.Body)
+
+	// Convert byte slice to string and return
+	//fmt.Println("respbody:", string(respbody))
+	return string(respbody)
 }
 
 func (app *application) userLogin(w http.ResponseWriter, r *http.Request) {
@@ -595,13 +762,13 @@ func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 func (app *application) isAuthenticated(r *http.Request) bool {
 	cookie, err := r.Cookie("session")
 	if err != nil {
-		fmt.Println("BAD CCCCOOOOOKKKKKIIIIIEEEE")
+		//fmt.Println("BAD CCCCOOOOOKKKKKIIIIIEEEE")
 		return false
 	}
 
 	_, expiry, err := app.sessions.GetSession(cookie.Value)
 	if err != nil {
-		fmt.Println("9999999 GET sessionnn")
+		//fmt.Println("9999999 GET sessionnn")
 
 		return false
 	}
