@@ -293,36 +293,35 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	var imagePath string
 	file, fileHeader, err := r.FormFile("image-upload")
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-	defer file.Close()
+	if err == nil {
+		filename := fileHeader.Filename
+		extension := filepath.Ext(filename)
+		newFilename := strconv.FormatInt(time.Now().UnixNano(), 10) + extension
+		imagePath = filepath.Join("/static/images", newFilename)
+		imageOut := "/ui" + imagePath
 
-	filename := fileHeader.Filename
-	extension := filepath.Ext(filename)
-	newFilename := strconv.FormatInt(time.Now().UnixNano(), 10) + extension
-	imagePath := filepath.Join("/static/images", newFilename)
-	imageOut := "/ui" + imagePath
+		f, err := os.OpenFile("."+imageOut, os.O_WRONLY|os.O_CREATE, 0666)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+		defer f.Close()
 
-	f, err := os.OpenFile("."+imageOut, os.O_WRONLY|os.O_CREATE, 0666)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-	defer f.Close()
+		fileSize := fileHeader.Size
+		if fileSize > maxFileSize {
+			app.clientError(w, http.StatusBadRequest)
+			return
+		}
 
-	fileSize := fileHeader.Size
-	if fileSize > maxFileSize {
-		app.clientError(w, http.StatusBadRequest)
-		return
-	}
+		_, err = io.Copy(f, file)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
 
-	_, err = io.Copy(f, file)
-	if err != nil {
-		app.serverError(w, err)
-		return
+		defer file.Close()
 	}
 
 	expires, err := strconv.Atoi(r.PostForm.Get("expires"))
