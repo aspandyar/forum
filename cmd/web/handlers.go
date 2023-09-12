@@ -56,7 +56,10 @@ type forumCommentForm struct {
 
 // Замените на свои данные OAuth 2.0
 const (
-	clientID     = "30519126384-v31k4ahraui4a59kmev21ju6353ne17p.apps.googleusercontent.com"
+	clientID        = "30519126384-v31k4ahraui4a59kmev21ju6353ne17p.apps.googleusercontent.com"
+	clientGitID     = "d110450fd3d4bae1c7bb"
+	clientGitSecret = "460b3d5eba5d619f7463b081a2b211e2083f73cf"
+
 	clientSecret = "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"
 	redirectURI  = "http://localhost:4000/callback"
 )
@@ -581,7 +584,7 @@ func (app *application) gitHubLoginHandler(w http.ResponseWriter, r *http.Reques
 	// Create the dynamic redirect URL for login
 	redirectURL := fmt.Sprintf(
 		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s",
-		clientID,
+		clientGitID,
 		"http://localhost:4000/login/github/callback",
 	)
 
@@ -601,8 +604,8 @@ func (app *application) getGitHubAccessToken(code string) string {
 	// clientSecret := getGitHubClientSecret()
 
 	requestBodyMap := map[string]string{
-		"client_id":     clientID,
-		"client_secret": clientSecret,
+		"client_id":     clientGitID,
+		"client_secret": clientGitSecret,
 		"code":          code,
 	}
 
