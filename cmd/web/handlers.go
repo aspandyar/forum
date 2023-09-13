@@ -447,7 +447,6 @@ func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
-
 	// Формирование URL для перенаправления пользователя на страницу аутентификации Google
 	authURL := fmt.Sprintf("https://accounts.google.com/o/oauth2/auth?client_id=%s&redirect_uri=%s&response_type=code&scope=email profile", clientID, redirectURI)
 	http.Redirect(w, r, authURL, http.StatusFound)
@@ -474,7 +473,6 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "Failed to decode token response", http.StatusInternalServerError)
 		return
 	}
-	//fmt.Println(tokenResponse)
 	accessToken := tokenResponse["access_token"].(string)
 
 	// Получение данных о пользователе с использованием токена доступа
@@ -504,7 +502,7 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 	err = app.users.Insert(userInfo.Name, userInfo.Email, userInfo.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
-			userID, err := app.users.Authenticate(userInfo.Email, userInfo.Password)
+			userID, _ := app.users.Authenticate(userInfo.Email, userInfo.Password)
 			// Если пользователь уже существует, создаем сессию и устанавливаем куки
 			session, err := app.sessions.CreateSession(userID)
 			if err != nil {
@@ -537,7 +535,6 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 
 	session, err := app.sessions.CreateSession(userID)
 	if err != nil {
-		//fmt.Println("errrrooorrr in CreateSessionnn")
 		app.serverError(w, err)
 		return
 	}
@@ -555,7 +552,6 @@ func generateRandomPassword(length int) (string, error) {
 }
 
 // Greate GIT HUB AUTOTEFICATION
-
 func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, githubData string) {
 	if githubData == "" {
 		// Unauthorized users get an unauthorized message
@@ -569,12 +565,10 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 	userInfo := UserInfo{}
 	json.Unmarshal([]byte(githubData), &userInfo)
 
-	//fmt.Fprintf(w, "Operation: \n Login:%s\n Name:%s\n Email:%s\n", data.Login, data.Name, data.Email)
-
 	err := app.users.Insert(userInfo.Name, userInfo.Email, userInfo.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
-			userID, err := app.users.Authenticate(userInfo.Email, userInfo.Password)
+			userID, _ := app.users.Authenticate(userInfo.Email, userInfo.Password)
 			// Если пользователь уже существует, создаем сессию и устанавливаем куки
 			session, err := app.sessions.CreateSession(userID)
 			if err != nil {
@@ -607,7 +601,6 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 
 	session, err := app.sessions.CreateSession(userID)
 	if err != nil {
-		//fmt.Println("errrrooorrr in CreateSessionnn")
 		app.serverError(w, err)
 		return
 	}
@@ -616,14 +609,7 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 
 }
 
-// func homeHandler(w http.ResponseWriter, r *http.Request) {
-// 	fmt.Fprintf(w, `<a href="/login/github/">SIGN IN with GITHUB</a>`)
-// }
-
 func (app *application) gitHubLoginHandler(w http.ResponseWriter, r *http.Request) {
-	// Get the environment variable
-	//githubClientID := getGitHubClientId()
-
 	// Create the dynamic redirect URL for login
 	redirectURL := fmt.Sprintf(
 		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s",
@@ -631,21 +617,17 @@ func (app *application) gitHubLoginHandler(w http.ResponseWriter, r *http.Reques
 		"http://localhost:4000/login/github/callback",
 	)
 
-	http.Redirect(w, r, redirectURL, 301)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
 func (app *application) gitHubCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	gitHubAccessToken := app.getGitHubAccessToken(code)
 	gitHubData := getGitHubData(gitHubAccessToken)
-	//fmt.Println("GITHUBDATA:", gitHubData)
 	app.loggedinHandler(w, r, gitHubData)
 
 }
 func (app *application) getGitHubAccessToken(code string) string {
-	// clientID := getGitHubClientId()
-	// clientSecret := getGitHubClientSecret()
-
 	requestBodyMap := map[string]string{
 		"client_id":     clientGitID,
 		"client_secret": clientGitSecret,
@@ -665,9 +647,7 @@ func (app *application) getGitHubAccessToken(code string) string {
 	req.Header.Set("Accept", "application/json")
 
 	// Get the response
-	//fmt.Println(req)
 	resp, resperr := http.DefaultClient.Do(req)
-	//fmt.Println("RESPERR:", resperr)
 
 	if resperr != nil {
 		log.Panic("Request failed by get the response")
@@ -704,7 +684,6 @@ func getGitHubData(accessToken string) string {
 	}
 
 	// Set the Authorization header before sending the request
-	// Authorization: token XXXXXXXXXXXXXXXXXXXXXXXXXXX
 	authorizationHeaderValue := fmt.Sprintf("token %s", accessToken)
 	req.Header.Set("Authorization", authorizationHeaderValue)
 
@@ -718,7 +697,6 @@ func getGitHubData(accessToken string) string {
 	respbody, _ := ioutil.ReadAll(resp.Body)
 
 	// Convert byte slice to string and return
-	//fmt.Println("respbody:", string(respbody))
 	return string(respbody)
 }
 
@@ -808,14 +786,11 @@ func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 func (app *application) isAuthenticated(r *http.Request) bool {
 	cookie, err := r.Cookie("session")
 	if err != nil {
-		fmt.Println("BAD CCCCOOOOOKKKKKIIIIIEEEE")
 		return false
 	}
 
 	_, expiry, err := app.sessions.GetSession(cookie.Value)
 	if err != nil {
-		fmt.Println("9999999 GET sessionnn")
-
 		return false
 	}
 
