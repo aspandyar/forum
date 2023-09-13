@@ -1,1 +1,5 @@
 *.db
+/ui/static/images/*.jpg
+/ui/static/images/*.png
+/ui/static/images/*.jpeg
+/ui/static/images/*.gif
