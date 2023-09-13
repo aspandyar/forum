@@ -19,6 +19,13 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("/auth", app.handleGoogleAuth)
 	mux.HandleFunc("/callback", app.handleGoogleCallback)
 
+	mux.HandleFunc("/login/github/", app.gitHubLoginHandler)
+	mux.HandleFunc("/loggedin", func(w http.ResponseWriter, r *http.Request) {
+		// Вызываем обработчик app.loggedinHandler с передачей данных пользователя
+		app.loggedinHandler(w, r, "")
+	})
+	mux.HandleFunc("/login/github/callback", app.gitHubCallbackHandler)
+
 	mux.HandleFunc("/user/login", app.userLogin)
 
 	forumCreate := http.HandlerFunc(app.handleForumCreate)
