@@ -487,42 +487,46 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 	}
 	defer userInfoResp.Body.Close()
 
-	var userInfo UserInfo
-	if err := json.NewDecoder(userInfoResp.Body).Decode(&userInfo); err != nil {
+	var form userSingupForm
+	if err := json.NewDecoder(userInfoResp.Body).Decode(&form); err != nil {
 		http.Error(w, "Failed to decode user info response", http.StatusInternalServerError)
 		return
 	}
 
-	userInfo.Password, err = generateRandomPassword(8)
+	form.Password, err = generateRandomPassword(8)
 	if err != nil {
 		app.clientError(w, http.StatusInternalServerError)
 		return
 	}
 
-	err = app.users.Insert(userInfo.Name, userInfo.Email, userInfo.Password)
+	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
+	form.CheckField(validator.NotBlank(form.Email), "email", "This field cannot be blank")
+	form.CheckField(validator.Matches(form.Email, validator.EmailRX), "email", "This field must be a valid email address")
+	// form.CheckField(validator.NotBlank(form.Password), "password", "This field cannot be blank")
+	// form.CheckField(validator.MinChars(form.Password, 8), "password", "This field must be at least 8 characters long")
+
+	if !form.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "signup.tmpl.html", data)
+		return
+	}
+
+	err = app.users.Insert(form.Name, form.Email, form.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
-			userID, _ := app.users.Authenticate(userInfo.Email, userInfo.Password)
-			// Если пользователь уже существует, создаем сессию и устанавливаем куки
-			session, err := app.sessions.CreateSession(userID)
-			if err != nil {
-				app.serverError(w, err)
-				return
-			}
-			models.SetSessionCookie(w, session.Token, session.Expiry)
-
-			// Перенаправляем пользователя на страницу "/create/forum"
-			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
-			return
-
+			form.AddFieldError("email", "Email or name address is already in use")
+			form.AddFieldError("name", "Email or name address is already in use")
+			data := app.newTemplateData(r)
+			data.Form = form
+			app.render(w, http.StatusUnprocessableEntity, "signup.tmpl.html", data)
 		} else {
 			app.serverError(w, err)
-
 		}
 		return
 	}
 
-	userID, err := app.users.Authenticate(userInfo.Email, userInfo.Password)
+	userID, err := app.users.Authenticate(form.Email, form.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrInvalidCredentials) {
 			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
@@ -562,33 +566,37 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 	// Set return type JSON
 	w.Header().Set("Content-type", "application/json")
 
-	userInfo := UserInfo{}
-	json.Unmarshal([]byte(githubData), &userInfo)
+	form := userSingupForm{}
+	json.Unmarshal([]byte(githubData), &form)
 
-	err := app.users.Insert(userInfo.Name, userInfo.Email, userInfo.Password)
+	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
+	form.CheckField(validator.NotBlank(form.Email), "email", "This field cannot be blank")
+	form.CheckField(validator.Matches(form.Email, validator.EmailRX), "email", "This field must be a valid email address")
+	// form.CheckField(validator.NotBlank(form.Password), "password", "This field cannot be blank")
+	// form.CheckField(validator.MinChars(form.Password, 8), "password", "This field must be at least 8 characters long")
+
+	if !form.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "signup.tmpl.html", data)
+		return
+	}
+
+	err := app.users.Insert(form.Name, form.Email, form.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
-			userID, _ := app.users.Authenticate(userInfo.Email, userInfo.Password)
-			// Если пользователь уже существует, создаем сессию и устанавливаем куки
-			session, err := app.sessions.CreateSession(userID)
-			if err != nil {
-				app.serverError(w, err)
-				return
-			}
-			models.SetSessionCookie(w, session.Token, session.Expiry)
-
-			// Перенаправляем пользователя на страницу "/create/forum"
-			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
-			return
-
+			form.AddFieldError("email", "Email or name address is already in use")
+			form.AddFieldError("name", "Email or name address is already in use")
+			data := app.newTemplateData(r)
+			data.Form = form
+			app.render(w, http.StatusUnprocessableEntity, "signup.tmpl.html", data)
 		} else {
 			app.serverError(w, err)
-
 		}
 		return
 	}
 
-	userID, err := app.users.Authenticate(userInfo.Email, userInfo.Password)
+	userID, err := app.users.Authenticate(form.Email, form.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrInvalidCredentials) {
 			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
@@ -640,9 +648,11 @@ func (app *application) getGitHubAccessToken(code string) string {
 		"https://github.com/login/oauth/access_token",
 		bytes.NewBuffer(requestJSON),
 	)
+
 	if reqerr != nil {
 		log.Panic("Request creation failed")
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
