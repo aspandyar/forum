@@ -515,11 +515,16 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 	err = app.users.Insert(form.Name, form.Email, form.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
-			form.AddFieldError("email", "Email or name address is already in use")
-			form.AddFieldError("name", "Email or name address is already in use")
-			data := app.newTemplateData(r)
-			data.Form = form
-			app.render(w, http.StatusUnprocessableEntity, "signup.tmpl.html", data)
+			userID, _ := app.users.Authenticate(form.Email, form.Password)
+
+			session, err := app.sessions.CreateSession(userID)
+			if err != nil {
+				app.serverError(w, err)
+				return
+			}
+			models.SetSessionCookie(w, session.Token, session.Expiry)
+
+			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
 		} else {
 			app.serverError(w, err)
 		}
@@ -585,11 +590,17 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 	err := app.users.Insert(form.Name, form.Email, form.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
-			form.AddFieldError("email", "Email or name address is already in use")
-			form.AddFieldError("name", "Email or name address is already in use")
-			data := app.newTemplateData(r)
-			data.Form = form
-			app.render(w, http.StatusUnprocessableEntity, "signup.tmpl.html", data)
+			userID, _ := app.users.Authenticate(form.Email, form.Password)
+
+			session, err := app.sessions.CreateSession(userID)
+			if err != nil {
+				app.serverError(w, err)
+				return
+			}
+			models.SetSessionCookie(w, session.Token, session.Expiry)
+
+			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
+			return
 		} else {
 			app.serverError(w, err)
 		}
