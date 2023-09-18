@@ -23,6 +23,7 @@ type Forum struct {
 	Created       time.Time
 	Expires       time.Time
 	ImagePath     string
+	IsOwnForum    bool
 }
 
 type userComment struct {
@@ -69,7 +70,24 @@ func (m *ForumModel) Insert(title, content, tags string, expires, userID int, im
 	return int(id), nil
 }
 
-func (m *ForumModel) Get(id, userId int) (*Forum, error) {
+func (m *ForumModel) Edit(title, content, tags string, expires, userID int, imagePath string, forumID int) error {
+	stmt := `UPDATE forums 
+	SET title = ?, content = ?, tags = ?, user_id = ?, expires = strftime('%Y-%m-%d %H:%M:%S', 'now', '+' || ? || ' day'), image_path = ?
+	WHERE id = ?`
+
+	_, err := m.DB.Exec(stmt, title, content, tags, userID, expires, imagePath, forumID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNoRecord
+		} else {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *ForumModel) Get(id, userId int, isOwn bool) (*Forum, error) {
 	stmt := `SELECT id, title, content, tags, created, expires, image_path
 	FROM forums
 	WHERE expires > datetime('now') AND id = ?;`
@@ -88,6 +106,7 @@ func (m *ForumModel) Get(id, userId int) (*Forum, error) {
 	}
 
 	f.TagsOutput = strings.Split(f.Tags, ", ")
+	f.IsOwnForum = isOwn
 
 	var reacted, liked bool
 
@@ -424,4 +443,21 @@ func containsAny(source []string, target []string) bool {
 		}
 	}
 	return false
+}
+
+func (m *ForumModel) GetUserIDFromForum(forumID int) (int, error) {
+	stmt := `SELECT user_id
+	FROM forums 
+	WHERE id = ?;`
+
+	row := m.DB.QueryRow(stmt, forumID)
+
+	var userID int
+
+	err := row.Scan(&userID)
+	if err != nil || userID <= 0 {
+		return 0, err
+	}
+
+	return userID, nil
 }

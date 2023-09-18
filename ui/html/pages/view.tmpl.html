@@ -11,6 +11,9 @@
                     <li>{{.}}</li>
                 {{end}}
             </ul>
+            {{if .IsOwnForum}}
+            <a href="/forum/edit/{{.ID}}">edit</a>
+            {{end}}
         </header>
         <div class='special-box'>
             <pre><code class='forum-content'>{{.Content}}</code></pre>
@@ -20,9 +23,9 @@
         </div><br>
         <div>
             {{if .ImagePath}}
-                    <button type="button" onclick="show()" id="btnID">
-                        Show Image
-                    </button>
+                <button type="button" onclick="show()" id="btnID">
+                    Show Image
+                </button>
             {{end}}
         </div><br>
         <section class='special-box metadata'>

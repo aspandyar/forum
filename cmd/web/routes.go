@@ -31,6 +31,9 @@ func (app *application) routes() http.Handler {
 	forumCreate := http.HandlerFunc(app.handleForumCreate)
 	mux.Handle("/forum/create", app.requireAuthentication(forumCreate))
 
+	forumEdit := http.HandlerFunc(app.handleForumEdit)
+	mux.Handle("/forum/edit/", app.requireAuthentication(forumEdit))
+
 	userLogout := http.HandlerFunc(app.userLogoutPost)
 	mux.Handle("/user/logout", app.requireAuthentication(userLogout))
 
