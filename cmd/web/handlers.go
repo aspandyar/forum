@@ -65,7 +65,7 @@ const (
 	clientGitSecret = "460b3d5eba5d619f7463b081a2b211e2083f73cf"
 
 	clientSecret = "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"
-	redirectURI  = "http://localhost:4000/callback"
+	redirectURI  = "https://localhost:4000/callback"
 )
 
 // Данные о пользователе
@@ -564,7 +564,7 @@ func generateRandomPassword(length int) (string, error) {
 func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, githubData string) {
 	if githubData == "" {
 		// Unauthorized users get an unauthorized message
-		fmt.Fprintf(w, "UNAUTHORIZED!")
+		app.serverError(w, errors.New("github.com: unauthorized"))
 		return
 	}
 
@@ -633,7 +633,7 @@ func (app *application) gitHubLoginHandler(w http.ResponseWriter, r *http.Reques
 	redirectURL := fmt.Sprintf(
 		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s",
 		clientGitID,
-		"http://localhost:4000/login/github/callback",
+		"https://localhost:4000/login/github/callback",
 	)
 
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)

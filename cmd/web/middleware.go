@@ -3,7 +3,43 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"sync"
+	"time"
 )
+
+var (
+	requestCount   = make(map[string]int)
+	requestCountMu sync.Mutex
+	limit          = 10
+	period         = time.Minute
+)
+
+func rateLimitMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		clientIP := r.RemoteAddr // You may need to extract the client's IP more accurately
+
+		requestCountMu.Lock()
+		defer requestCountMu.Unlock()
+
+		// Check if the client has exceeded the rate limit
+		if requestCount[clientIP] >= limit {
+			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+			return
+		}
+
+		// Increment the request count for this client
+		requestCount[clientIP]++
+
+		// Reset the request count after the specified period
+		time.AfterFunc(period, func() {
+			requestCountMu.Lock()
+			defer requestCountMu.Unlock()
+			requestCount[clientIP] = 0
+		})
+
+		next.ServeHTTP(w, r)
+	})
+}
 
 func secureHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
