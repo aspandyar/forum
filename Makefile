@@ -3,6 +3,8 @@ APPLICATION_NAME ?= forum
 
 build:
 	touch st.db
+	echo "DB_USER=aspandyar" > .env
+	echo "DB_PASSWORD=12345678" >> .env
 	docker build --tag ${APPLICATION_NAME} .
 
 run:
