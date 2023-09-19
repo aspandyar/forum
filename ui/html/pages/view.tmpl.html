@@ -13,8 +13,6 @@
             </ul>
             {{if .IsOwnForum}}
             <a href="/forum/edit/{{.ID}}">edit</a>
-            {{end}}
-            {{if .IsOwnForum}}
             <a href="/forum/remove/{{.ID}}">remove</a>
             {{end}}
         </header>
@@ -106,6 +104,7 @@
                     {{end}}
                     {{if .IsOwnComment}}
                         <a href="/forum/comment/edit/{{.ForumID}}/{{.CommentID}}">edit</a>
+                        <a href="/forum/comment/remove/{{.ForumID}}/{{.CommentID}}">remove</a>
                     {{end}}
                 </td>
             </tr>

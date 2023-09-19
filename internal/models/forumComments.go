@@ -38,3 +38,31 @@ func (m *ForumCommentModel) EditCommentPost(forumID, userID int, comment string,
 	}
 	return nil
 }
+
+func (m *ForumCommentModel) RemoveCommentPost(commentID int) error {
+	stmt := `DELETE FROM forum_comments
+	WHERE id = ?`
+
+	_, err := m.DB.Exec(stmt, commentID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *ForumModel) GetUserIDFromComment(forumCommentID int) (int, error) {
+	stmt := `SELECT user_id
+	FROM forum_comments 
+	WHERE id = ?;`
+
+	row := m.DB.QueryRow(stmt, forumCommentID)
+
+	var userID int
+
+	err := row.Scan(&userID)
+	if err != nil || userID <= 0 {
+		return 0, err
+	}
+
+	return userID, nil
+}

@@ -1400,3 +1400,55 @@ func (app *application) ForumEditCommentPost(w http.ResponseWriter, r *http.Requ
 
 	http.Redirect(w, r, fmt.Sprintf("/forum/view/%d", form.ForumID), http.StatusSeeOther)
 }
+
+func (app *application) ForumRemoveCommentPost(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	idStr := parts[4]
+	forumID, err := strconv.Atoi(idStr)
+	if err != nil || forumID < 1 {
+		fmt.Println(idStr)
+		http.NotFound(w, r)
+		return
+	}
+
+	idStr = parts[5]
+	commentID, err := strconv.Atoi(idStr)
+	if err != nil || commentID < 1 {
+		fmt.Println(idStr)
+		http.NotFound(w, r)
+		return
+	}
+
+	userFromForum, err := app.forums.GetUserIDFromComment(commentID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	var userID int
+
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		userID = 0
+	} else {
+		userID, _, err = app.sessions.GetSession(cookie.Value)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+	}
+
+	if userID != userFromForum {
+		app.clientError(w, http.StatusBadRequest)
+	}
+
+	err = app.forumComment.RemoveCommentPost(commentID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/forum/view/%d", forumID), http.StatusSeeOther)
+}
