@@ -14,6 +14,9 @@
             {{if .IsOwnForum}}
             <a href="/forum/edit/{{.ID}}">edit</a>
             {{end}}
+            {{if .IsOwnForum}}
+            <a href="/forum/remove/{{.ID}}">remove</a>
+            {{end}}
         </header>
         <div class='special-box'>
             <pre><code class='forum-content'>{{.Content}}</code></pre>

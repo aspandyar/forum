@@ -34,6 +34,9 @@ func (app *application) routes() http.Handler {
 	forumEdit := http.HandlerFunc(app.handleForumEdit)
 	mux.Handle("/forum/edit/", app.requireAuthentication(forumEdit))
 
+	forumRemove := http.HandlerFunc(app.handleForumRemove)
+	mux.Handle("/forum/remove/", app.requireAuthentication(forumRemove))
+
 	userLogout := http.HandlerFunc(app.userLogoutPost)
 	mux.Handle("/user/logout", app.requireAuthentication(userLogout))
 

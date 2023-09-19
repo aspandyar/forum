@@ -511,6 +511,17 @@ func (m *ForumModel) ShowAll() ([]*Forum, error) {
 	return forums, nil
 }
 
+func (m *ForumModel) Remove(forumID int) error {
+	stmt := `DELETE FROM forums WHERE id = ?;`
+
+	_, err := m.DB.Exec(stmt, forumID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *ForumModel) ShowCategory(tags []string) ([]*Forum, error) {
 	stmt := `SELECT id, title, content, tags, created, expires
 	FROM forums
