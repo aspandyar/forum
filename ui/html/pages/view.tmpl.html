@@ -55,11 +55,19 @@
             </form>
         </section>
     </article>
-    <form method="post" action="/forum/comment/{{.ID}}">
-        <label for="comment">Enter Text:</label>
-        <input type="text" id="comment" name="comment" required>
-        <button type="submit">Submit</button>
-    </form>
+    {{ if eq (.EditComment.CommentID) 0 }}
+        <form method="post" action="/forum/comment/{{.ID}}">
+            <label for="comment">Enter Text:</label>
+            <input type="text" id="comment" name="comment" required>
+            <button type="submit">Submit</button>
+        </form>
+    {{ else }}
+        <form method="post">
+            <label for="comment">Enter Text:</label>
+            <input type="text" id="comment" name="comment" value="{{ .EditComment.Comment }}" required>
+            <button type="submit">Submit</button>
+        </form>
+    {{ end }}
     <table class='comments'>
         <thead>
             <tr>
@@ -92,6 +100,9 @@
                         <span class="likes">{{.LikesCount}}</span>
                         <button class="dislike-button not-disliked" type="submit" name="button" value="dislike">dislike</button>
                         <span class="dislikes">{{.DislikesCount}}</span>
+                    {{end}}
+                    {{if .IsOwnComment}}
+                        <a href="/forum/comment/edit/{{.ForumID}}/{{.CommentID}}">edit</a>
                     {{end}}
                 </td>
             </tr>
