@@ -61,5 +61,8 @@ func (app *application) routes() http.Handler {
 	forumAllPosts := http.HandlerFunc(app.forumAllUserPosts)
 	mux.Handle("/forum/allPosts", app.requireAuthentication(forumAllPosts))
 
+	userNotificationSection := http.HandlerFunc(app.userNotification)
+	mux.Handle("/user/notification", app.requireAuthentication(userNotificationSection))
+
 	return app.recoverPanic(app.logRequest(secureHeaders(mux)))
 }

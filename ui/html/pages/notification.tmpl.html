@@ -1,0 +1,26 @@
+{{define "title"}}Home{{end}}
+
+{{define "main"}}
+    {{if .Form}}
+        <table>
+            <thead>
+                <tr>
+                    <th>User Commented</th>
+                    <th>Body</th>
+                    <th>Forum</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{ range .Form }}
+                <tr>
+                    <td>{{ .UserCommented }}</td>
+                    <td>{{ .Body }}</td>
+                    <td><a href = "/forum/view/{{ .ForumID }}">your post</a></td>
+                </tr>
+                {{ end }}
+            </tbody>
+        </table>
+    {{else}}
+        <p>There's nothing to see here... yet!</p>
+    {{end}}
+{{end}}

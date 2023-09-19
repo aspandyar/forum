@@ -177,6 +177,37 @@ func (app *application) forumAllUserLikes(w http.ResponseWriter, r *http.Request
 	app.render(w, http.StatusOK, "allForums.tmpl.html", data)
 }
 
+func (app *application) userNotification(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/user/notification" {
+		app.notFound(w)
+		return
+	}
+
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	userID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	notification, err := app.forums.ShowUserNotification(userID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	data := app.newTemplateData(r)
+
+	data.Form = notification
+
+	app.render(w, http.StatusOK, "notification.tmpl.html", data)
+}
+
 func (app *application) forumCategory(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/forum/category" {
 		app.notFound(w)

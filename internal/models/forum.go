@@ -39,6 +39,14 @@ type userComment struct {
 	IsOwnComment  bool
 }
 
+type Notification struct {
+	UserID        int
+	ForumID       int
+	UserCommented string
+	Body          string
+	Status        int
+}
+
 type ForumModel struct {
 	DB *sql.DB
 }
@@ -605,6 +613,155 @@ func (m *ForumModel) ShowAllUserPosts(userID int) ([]*Forum, error) {
 	return forums, nil
 }
 
+func (m *ForumModel) ShowUserNotification(userID int) ([]*Notification, error) {
+	stmt := `SELECT id, title, content, tags, created, expires
+	FROM forums 
+	WHERE user_id = ?;`
+
+	rows, err := m.DB.Query(stmt, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	AllUserForums := []*Forum{}
+
+	for rows.Next() {
+		f := &Forum{}
+
+		err := rows.Scan(&f.ID, &f.Title, &f.Content, &f.Tags, &f.Created, &f.Expires)
+		if err != nil {
+			return nil, err
+		}
+
+		AllUserForums = append(AllUserForums, f)
+	}
+
+	allNot := []*Notification{}
+
+	for _, userForums := range AllUserForums {
+		stmt = `SELECT comment, user_id
+		FROM forum_comments 
+		WHERE forum_id = ? AND user_id != ?;`
+
+		rows, err = m.DB.Query(stmt, userForums.ID, userID)
+		if err != nil {
+			return nil, err
+		}
+
+		defer rows.Close()
+
+		for rows.Next() {
+			not := &Notification{}
+
+			var userIDTemp int
+			err := rows.Scan(&not.Body, &userIDTemp)
+			if err != nil {
+				return nil, err
+			}
+
+			not.UserCommented, err = m.GetUserByUserID(userIDTemp)
+			if err != nil {
+				return nil, err
+			}
+
+			not.UserID = userID
+			not.ForumID = userForums.ID
+			not.Status = 0 //commented: 0, liked: 1, disliked: -1
+
+			allNot = append(allNot, not)
+		}
+
+		stmt = `SELECT like_status, user_id
+		FROM forum_likes
+		WHERE forum_id = ? AND user_id != ?`
+
+		rows, err = m.DB.Query(stmt, userForums.ID, userID)
+		if err != nil {
+			return nil, err
+		}
+
+		defer rows.Close()
+
+		for rows.Next() {
+			not := &Notification{}
+
+			var tempUserID int
+			err := rows.Scan(&not.Status, &tempUserID)
+			if err != nil {
+				return nil, err
+			}
+
+			not.UserCommented, err = m.GetUserByUserID(tempUserID)
+			if err != nil {
+				return nil, err
+			}
+
+			if not.Status == 1 {
+				not.Body = "liked"
+			} else if not.Status == -1 {
+				not.Body = "disliked"
+			} else {
+				break
+			}
+
+			not.UserID = userID
+			not.ForumID = userForums.ID
+			//commented: 1, liked: 2, disliked: 3
+
+			allNot = append(allNot, not)
+		}
+
+		stmt = `SELECT fl.like_status, fl.user_id
+		FROM forum_likes fl
+		INNER JOIN forum_comments fc ON fl.comment_id = fc.id
+		WHERE fc.user_id != fl.user_id AND fc.user_id = ?;`
+
+		rows, err = m.DB.Query(stmt, userID)
+		if err != nil {
+			return nil, err
+		}
+
+		defer rows.Close()
+
+		for rows.Next() {
+			not := &Notification{}
+
+			var tempUserID int
+			err := rows.Scan(&not.Status, &tempUserID)
+			if err != nil {
+				return nil, err
+			}
+
+			not.UserCommented, err = m.GetUserByUserID(tempUserID)
+			if err != nil {
+				return nil, err
+			}
+
+			if not.Status == 1 {
+				not.Body = "liked"
+			} else if not.Status == -1 {
+				not.Body = "disliked"
+			} else {
+				break
+			}
+
+			not.UserID = userID
+			not.ForumID = userForums.ID
+			//commented: 1, liked: 2, disliked: 3
+
+			allNot = append(allNot, not)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return allNot, nil
+}
+
 func (m *ForumModel) ShowAllUserLikes(userID int) ([]*Forum, error) {
 	stmt := `SELECT f.id, f.title, f.content, f.tags, f.created, f.expires
 	FROM forums f
@@ -675,4 +832,19 @@ func (m *ForumModel) GetUserIDFromForum(forumID int) (int, error) {
 	}
 
 	return userID, nil
+}
+
+func (m *ForumModel) GetUserByUserID(userID int) (string, error) {
+	stmt := `SELECT name, email FROM users WHERE id = ?`
+
+	row := m.DB.QueryRow(stmt, userID)
+
+	var user User
+
+	err := row.Scan(&user.Name, &user.Email)
+	if err != nil {
+		return user.Name, err
+	}
+
+	return user.Name, nil
 }
