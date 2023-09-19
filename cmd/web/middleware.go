@@ -10,7 +10,7 @@ import (
 var (
 	requestCount   = make(map[string]int)
 	requestCountMu sync.Mutex
-	limit          = 10
+	limit          = 100
 	period         = time.Minute
 )
 

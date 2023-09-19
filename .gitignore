@@ -4,3 +4,4 @@ ui/static/images/*.jpeg
 ui/static/images/*.jpg
 ui/static/images/*.gif
 tls/*.pem
+.env

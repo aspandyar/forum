@@ -447,7 +447,6 @@ func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
-	// Формирование URL для перенаправления пользователя на страницу аутентификации Google
 	authURL := fmt.Sprintf("https://accounts.google.com/o/oauth2/auth?client_id=%s&redirect_uri=%s&response_type=code&scope=email profile", clientID, redirectURI)
 	http.Redirect(w, r, authURL, http.StatusFound)
 }
@@ -493,11 +492,7 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	form.Password, err = generateRandomPassword(8)
-	if err != nil {
-		app.clientError(w, http.StatusInternalServerError)
-		return
-	}
+	form.Password, _ = generateRandomPassword(8) //NOTATION!!!!!
 
 	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
 	form.CheckField(validator.NotBlank(form.Email), "email", "This field cannot be blank")
@@ -547,7 +542,9 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 		app.serverError(w, err)
 		return
 	}
+
 	models.SetSessionCookie(w, session.Token, session.Expiry)
+
 	http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
 }
 
@@ -563,7 +560,6 @@ func generateRandomPassword(length int) (string, error) {
 // Greate GIT HUB AUTOTEFICATION
 func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, githubData string) {
 	if githubData == "" {
-		// Unauthorized users get an unauthorized message
 		app.serverError(w, errors.New("github.com: unauthorized"))
 		return
 	}
@@ -573,6 +569,7 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 
 	form := userSingupForm{}
 	json.Unmarshal([]byte(githubData), &form)
+	form.Password, _ = generateRandomPassword(8) //NOTATION!!!!!
 
 	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
 	form.CheckField(validator.NotBlank(form.Email), "email", "This field cannot be blank")
@@ -590,13 +587,22 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 	err := app.users.Insert(form.Name, form.Email, form.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
-			userID, _ := app.users.Authenticate(form.Email, form.Password)
+			userID, err := app.users.Authenticate(form.Email, form.Password)
+			if err != nil {
+				if errors.Is(err, models.ErrInvalidCredentials) {
+					http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+				} else {
+					app.serverError(w, err)
+				}
+				return
+			}
 
 			session, err := app.sessions.CreateSession(userID)
 			if err != nil {
 				app.serverError(w, err)
 				return
 			}
+
 			models.SetSessionCookie(w, session.Token, session.Expiry)
 
 			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
@@ -610,8 +616,7 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 	userID, err := app.users.Authenticate(form.Email, form.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrInvalidCredentials) {
-			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
-
+			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 		} else {
 			app.serverError(w, err)
 		}
@@ -623,9 +628,10 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 		app.serverError(w, err)
 		return
 	}
-	models.SetSessionCookie(w, session.Token, session.Expiry)
-	http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
 
+	models.SetSessionCookie(w, session.Token, session.Expiry)
+
+	http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
 }
 
 func (app *application) gitHubLoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -735,6 +741,7 @@ func (app *application) userLogin(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) userLoginGet(w http.ResponseWriter, r *http.Request) {
 	data := app.newTemplateData(r)
+	time.Sleep(1 * time.Second)
 	data.Form = userLoginForm{}
 	app.render(w, http.StatusOK, "login.tmpl.html", data)
 }

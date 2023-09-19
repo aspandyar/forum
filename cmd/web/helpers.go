@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"net/http"
+	"os"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -81,4 +83,38 @@ func (app *application) processTags(selectedTags []string, customTagsStr string)
 	}
 
 	return tags
+}
+
+func LoadEnvFromFile(filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Create a map to store key-value pairs
+	envVars := make(map[string]string)
+
+	// Read and parse the file line by line
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			envVars[key] = value
+		}
+	}
+
+	// Set the environment variables
+	for key, value := range envVars {
+		os.Setenv(key, value)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	return nil
 }
