@@ -519,6 +519,20 @@ func (m *ForumModel) Remove(forumID int) error {
 		return err
 	}
 
+	stmt = `DELETE FROM forum_likes WHERE forum_id = ?;`
+
+	_, err = m.DB.Exec(stmt, forumID)
+	if err != nil {
+		return err
+	}
+
+	stmt = `DELETE FROM forum_comments WHERE forum_id = ?;`
+
+	_, err = m.DB.Exec(stmt, forumID)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
