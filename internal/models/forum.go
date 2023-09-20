@@ -712,47 +712,46 @@ func (m *ForumModel) ShowUserNotification(userID int) ([]*Notification, error) {
 
 			allNot = append(allNot, not)
 		}
+	}
 
-		stmt = `SELECT fl.like_status, fl.user_id
+	stmt = `SELECT fl.like_status, fl.user_id, fc.forum_id
 		FROM forum_likes fl
 		INNER JOIN forum_comments fc ON fl.comment_id = fc.id
 		WHERE fc.user_id != fl.user_id AND fc.user_id = ?;`
 
-		rows, err = m.DB.Query(stmt, userID)
+	rows, err = m.DB.Query(stmt, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		not := &Notification{}
+
+		var tempUserID int
+		err := rows.Scan(&not.Status, &tempUserID, &not.ForumID)
 		if err != nil {
 			return nil, err
 		}
 
-		defer rows.Close()
-
-		for rows.Next() {
-			not := &Notification{}
-
-			var tempUserID int
-			err := rows.Scan(&not.Status, &tempUserID)
-			if err != nil {
-				return nil, err
-			}
-
-			not.UserCommented, err = m.GetUserByUserID(tempUserID)
-			if err != nil {
-				return nil, err
-			}
-
-			if not.Status == 1 {
-				not.Body = "liked"
-			} else if not.Status == -1 {
-				not.Body = "disliked"
-			} else {
-				break
-			}
-
-			not.UserID = userID
-			not.ForumID = userForums.ID
-			//commented: 1, liked: 2, disliked: 3
-
-			allNot = append(allNot, not)
+		not.UserCommented, err = m.GetUserByUserID(tempUserID)
+		if err != nil {
+			return nil, err
 		}
+
+		if not.Status == 1 {
+			not.Body = "liked"
+		} else if not.Status == -1 {
+			not.Body = "disliked"
+		} else {
+			break
+		}
+
+		not.UserID = userID
+		//commented: 1, liked: 2, disliked: 3
+
+		allNot = append(allNot, not)
 	}
 
 	if err = rows.Err(); err != nil {
