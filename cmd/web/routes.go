@@ -58,6 +58,9 @@ func (app *application) routes() http.Handler {
 	forumAllLikes := http.HandlerFunc(app.forumAllUserLikes)
 	mux.Handle("/forum/allLikes", app.requireAuthentication(forumAllLikes))
 
+	forumAllComments := http.HandlerFunc(app.forumAllUserComments)
+	mux.Handle("/forum/all_comments", app.requireAuthentication(forumAllComments))
+
 	forumAllPosts := http.HandlerFunc(app.forumAllUserPosts)
 	mux.Handle("/forum/allPosts", app.requireAuthentication(forumAllPosts))
 

@@ -66,3 +66,34 @@ func (m *ForumModel) GetUserIDFromComment(forumCommentID int) (int, error) {
 
 	return userID, nil
 }
+
+func (m *ForumModel) ShowAllUserComments(userID int) ([]*ForumComment, error) {
+	stmt := `SELECT forum_id, comment FROM forum_comments
+	WHERE user_id = ?`
+
+	rows, err := m.DB.Query(stmt, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	forums := []*ForumComment{}
+
+	for rows.Next() {
+		f := &ForumComment{}
+
+		err := rows.Scan(&f.ForumID, &f.Comment)
+		if err != nil {
+			return nil, err
+		}
+
+		forums = append(forums, f)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return forums, nil
+}
