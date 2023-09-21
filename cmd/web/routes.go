@@ -21,7 +21,6 @@ func (app *application) routes() http.Handler {
 
 	mux.HandleFunc("/login/github/", app.gitHubLoginHandler)
 	mux.HandleFunc("/loggedin", func(w http.ResponseWriter, r *http.Request) {
-		// Вызываем обработчик app.loggedinHandler с передачей данных пользователя
 		app.loggedinHandler(w, r, "")
 	})
 	mux.HandleFunc("/login/github/callback", app.gitHubCallbackHandler)
@@ -52,5 +51,5 @@ func (app *application) routes() http.Handler {
 	forumAllPosts := http.HandlerFunc(app.forumAllUserPosts)
 	mux.Handle("/forum/allPosts", app.requireAuthentication(forumAllPosts))
 
-	return app.recoverPanic(app.logRequest(secureHeaders(mux)))
+	return app.recoverPanic(app.logRequest(secureHeaders(rateLimitMiddleware(mux))))
 }

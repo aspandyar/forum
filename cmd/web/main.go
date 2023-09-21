@@ -1,7 +1,7 @@
 package main
 
-//test test
 import (
+	"crypto/tls"
 	"database/sql"
 	"flag"
 	"io/ioutil"
@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/aspandyar/forum/internal/models"
 	_ "github.com/mattn/go-sqlite3"
@@ -38,6 +39,18 @@ func main() {
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
+	err := LoadEnvFromFile(".env")
+	if err != nil {
+		log.Fatal("Error loading .env file:", err)
+	}
+
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+
+	if dbUser == "" || dbPassword == "" {
+		errorLog.Fatal("Missing database credentials. Set DB_USER and DB_PASSWORD environment variables.")
+	}
+
 	db, err := openDB(newDbName)
 	if err != nil {
 		errorLog.Fatal(err)
@@ -62,14 +75,33 @@ func main() {
 		tempalteCache: templateCache,
 	}
 
+	tlsConfig := &tls.Config{
+		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
+		MinVersion:       tls.VersionTLS12,
+		MaxVersion:       tls.VersionTLS13,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		},
+	}
+
 	srv := &http.Server{
-		Addr:     *addr,
-		ErrorLog: errorLog,
-		Handler:  app.routes(),
+		Addr:           *addr,
+		ErrorLog:       errorLog,
+		MaxHeaderBytes: 524288,
+		Handler:        app.routes(),
+		TLSConfig:      tlsConfig,
+		IdleTimeout:    time.Minute,
+		ReadTimeout:    5 * time.Second,
+		WriteTimeout:   10 * time.Second,
 	}
 
 	infoLog.Printf("starting server on %s", *addr)
-	err = srv.ListenAndServe()
+	err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
 	errorLog.Fatal(err)
 }
 

@@ -48,7 +48,7 @@ func (m *SessionModel) CreateSession(userID int) (*Session, error) {
 		UserID: userID,
 		Expiry: expiration,
 	}
-	//fmt.Println("SESSION:", session)
+
 	return session, nil
 }
 
@@ -81,10 +81,13 @@ func (m *SessionModel) GetSession(token string) (int, time.Time, error) {
 
 func SetSessionCookie(w http.ResponseWriter, token string, expiration time.Time) {
 	sessionCookie := &http.Cookie{
-		Name:    "session",
-		Value:   token,
-		Expires: expiration,
-		Path:    "/",
+		Name:     "session",
+		Value:    token,
+		Expires:  expiration,
+		Path:     "/",
+		Secure:   true,                    // Set the Secure attribute to true
+		HttpOnly: true,                    // Recommended to set HttpOnly to prevent JavaScript access
+		SameSite: http.SameSiteStrictMode, // Recommended for security
 	}
 	http.SetCookie(w, sessionCookie)
 }
