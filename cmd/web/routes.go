@@ -33,6 +33,9 @@ func (app *application) routes() http.Handler {
 	forumEdit := http.HandlerFunc(app.handleForumEdit)
 	mux.Handle("/forum/edit/", app.requireAuthentication(forumEdit))
 
+	forumRemove := http.HandlerFunc(app.handleForumRemove)
+	mux.Handle("/forum/remove/", app.requireAuthentication(forumRemove))
+
 	userLogout := http.HandlerFunc(app.userLogoutPost)
 	mux.Handle("/user/logout", app.requireAuthentication(userLogout))
 
@@ -42,14 +45,26 @@ func (app *application) routes() http.Handler {
 	forumCommentStatus := http.HandlerFunc(app.handleForumComment)
 	mux.Handle("/forum/comment/", app.requireAuthentication(forumCommentStatus))
 
+	forumCommentEditStatus := http.HandlerFunc(app.handleForumEditComment)
+	mux.Handle("/forum/comment/edit/", app.requireAuthentication(forumCommentEditStatus))
+
+	forumRemoveCommentStatus := http.HandlerFunc(app.ForumRemoveCommentPost)
+	mux.Handle("/forum/comment/remove/", app.requireAuthentication(forumRemoveCommentStatus))
+
 	forumLikeCommentStatus := http.HandlerFunc(app.forumIsLikeComment)
 	mux.Handle("/forum/likeComment/", app.requireAuthentication(forumLikeCommentStatus))
 
 	forumAllLikes := http.HandlerFunc(app.forumAllUserLikes)
 	mux.Handle("/forum/allLikes", app.requireAuthentication(forumAllLikes))
 
+	forumAllComments := http.HandlerFunc(app.forumAllUserComments)
+	mux.Handle("/forum/all_comments", app.requireAuthentication(forumAllComments))
+
 	forumAllPosts := http.HandlerFunc(app.forumAllUserPosts)
 	mux.Handle("/forum/allPosts", app.requireAuthentication(forumAllPosts))
+
+	userNotificationSection := http.HandlerFunc(app.userNotification)
+	mux.Handle("/user/notification", app.requireAuthentication(userNotificationSection))
 
 	return app.recoverPanic(app.logRequest(secureHeaders(rateLimitMiddleware(mux))))
 }

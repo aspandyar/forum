@@ -1,0 +1,20 @@
+{{define "title"}}Home{{end}}
+
+{{define "main"}}
+    {{if .Form}}
+        <table>
+            <tr>
+                <th>Posts</th>
+                <th>Your Comment</th>
+            </tr>
+            {{range .Form}}
+            <tr>
+                <td><a href='/forum/view/{{.ForumID}}'>post</a></td>
+                <td>{{.Comment}}</td>
+                </tr>
+            {{end}}
+        </table>
+    {{else}}
+        <p>There's nothing to see here... yet!</p>
+    {{end}}
+{{end}}
