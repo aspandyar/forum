@@ -51,6 +51,18 @@ func (m *ForumCommentModel) EditCommentPost(forumID, userID int, comment string,
 	return nil
 }
 
+// func (m *ForumCommentModel) EditCommentPostNotification(body string, notID int) error {
+// 	stmt := `UPDATE forum_notifications
+// 	SET body = ?
+// 	WHERE id = ?`
+
+// 	_, err := m.DB.Exec(stmt, body, notID)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// } TODO: edit comment should eddit also notification... but how to get id from notification???
+
 func (m *ForumCommentModel) RemoveCommentPost(commentID int) error {
 	stmt := `DELETE FROM forum_comments
 	WHERE id = ?`
