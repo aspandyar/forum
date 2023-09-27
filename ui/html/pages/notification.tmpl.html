@@ -6,6 +6,7 @@
             <thead>
                 <tr>
                     <th>User Commented</th>
+                    <th>Status</th>
                     <th>Body</th>
                     <th>Forum</th>
                 </tr>
@@ -14,6 +15,7 @@
                 {{ range .Form }}
                 <tr>
                     <td>{{ .UserCommented }}</td>
+                    <td>{{ .Status }}</td>
                     <td>{{ .Body }}</td>
                     <td><a href = "/forum/view/{{ .ForumID }}">your post</a></td>
                 </tr>

@@ -226,7 +226,7 @@ func (app *application) userNotification(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	notification, err := app.forums.ShowUserNotification(userID)
+	notifications, err := app.forums.ShowUserNotification(userID)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -234,7 +234,7 @@ func (app *application) userNotification(w http.ResponseWriter, r *http.Request)
 
 	data := app.newTemplateData(r)
 
-	data.Form = notification
+	data.Form = notifications
 
 	app.render(w, http.StatusOK, "notification.tmpl.html", data)
 }
@@ -271,7 +271,6 @@ func (app *application) forumCategory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	// tagsStr := strings.Join(tags, ", ")
 
 	data := app.newTemplateData(r)
 
@@ -742,10 +741,8 @@ func (app *application) handleGoogleAuth(w http.ResponseWriter, r *http.Request)
 }
 
 func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
-	// Получение кода авторизации из запроса
 	code := r.URL.Query().Get("code")
 
-	// Обмен кода авторизации на токен доступа
 	tokenURL := "https://accounts.google.com/o/oauth2/token"
 	data := fmt.Sprintf("code=%s&client_id=%s&client_secret=%s&redirect_uri=%s&grant_type=authorization_code", code, clientID, clientSecret, redirectURI)
 
@@ -764,7 +761,6 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 	}
 	accessToken := tokenResponse["access_token"].(string)
 
-	// Получение данных о пользователе с использованием токена доступа
 	userInfoURL := "https://www.googleapis.com/oauth2/v2/userinfo"
 	req, _ := http.NewRequest("GET", userInfoURL, nil)
 	req.Header.Add("Authorization", "Bearer "+accessToken)
@@ -847,14 +843,12 @@ func generateRandomPassword(length int) (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
-// Greate GIT HUB AUTOTEFICATION
 func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, githubData string) {
 	if githubData == "" {
 		app.serverError(w, errors.New("github.com: unauthorized"))
 		return
 	}
 
-	// Set return type JSON
 	w.Header().Set("Content-type", "application/json")
 
 	form := userSingupForm{}
@@ -925,7 +919,6 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 }
 
 func (app *application) gitHubLoginHandler(w http.ResponseWriter, r *http.Request) {
-	// Create the dynamic redirect URL for login
 	redirectURL := fmt.Sprintf(
 		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s",
 		clientGitID,
@@ -942,6 +935,7 @@ func (app *application) gitHubCallbackHandler(w http.ResponseWriter, r *http.Req
 	app.loggedinHandler(w, r, gitHubData)
 
 }
+
 func (app *application) getGitHubAccessToken(code string) string {
 	requestBodyMap := map[string]string{
 		"client_id":     clientGitID,
@@ -963,34 +957,27 @@ func (app *application) getGitHubAccessToken(code string) string {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	// Get the response
 	resp, resperr := http.DefaultClient.Do(req)
 
 	if resperr != nil {
 		log.Panic("Request failed by get the response")
 	}
 
-	// Response body converted to stringified JSON
 	respbody, _ := ioutil.ReadAll(resp.Body)
 
-	// Represents the response received from Github
 	type githubAccessTokenResponse struct {
 		AccessToken string `json:"access_token"`
 		TokenType   string `json:"token_type"`
 		Scope       string `json:"scope"`
 	}
 
-	// Convert stringified JSON to a struct object of type githubAccessTokenResponse
 	var ghresp githubAccessTokenResponse
 	json.Unmarshal(respbody, &ghresp)
 
-	// Return the access token (as the rest of the
-	// details are relatively unnecessary for us)
 	return ghresp.AccessToken
 
 }
 func getGitHubData(accessToken string) string {
-	// Get request to a set URL
 	req, reqerr := http.NewRequest(
 		"GET",
 		"https://api.github.com/user",
@@ -1000,20 +987,16 @@ func getGitHubData(accessToken string) string {
 		log.Panic("API Request creation failed")
 	}
 
-	// Set the Authorization header before sending the request
 	authorizationHeaderValue := fmt.Sprintf("token %s", accessToken)
 	req.Header.Set("Authorization", authorizationHeaderValue)
 
-	// Make the request
 	resp, resperr := http.DefaultClient.Do(req)
 	if resperr != nil {
 		log.Panic("Request failed by Make the request")
 	}
 
-	// Read the response as a byte slice
 	respbody, _ := ioutil.ReadAll(resp.Body)
 
-	// Convert byte slice to string and return
 	return string(respbody)
 }
 
@@ -1327,6 +1310,26 @@ func (app *application) ForumCommentPost(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		app.serverError(w, err)
 		return
+	}
+
+	userIDfromForum, err := app.forums.GetUserIDFromForum(form.ForumID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	if userIDfromForum != form.UserID {
+		user_name, err := app.forums.GetUserByUserIDInComment(form.UserID)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+
+		err = app.forumComment.CommentPostNotification(form.ForumID, userIDfromForum, form.Comment, user_name)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/forum/view/%d", id), http.StatusSeeOther)

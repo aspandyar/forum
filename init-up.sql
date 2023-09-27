@@ -43,3 +43,12 @@ CREATE TABLE IF NOT EXISTS forum_comments (
     FOREIGN KEY (forum_id) REFERENCES forums (id),
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
+
+CREATE TABLE IF NOT EXISTS forum_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_name TEXT NOT NULL,
+    body TEXT NOT NULL,
+    status TEXT NOT NULL,
+    forum_link TEXT NOT NULL,
+    user_id INTEGER NOT NULL
+);
