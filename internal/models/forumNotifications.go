@@ -1,6 +1,7 @@
 package models
 
 type Notification struct {
+	ID            int
 	UserID        int
 	ForumID       int
 	UserCommented string
@@ -8,8 +9,8 @@ type Notification struct {
 	Status        string
 }
 
-func (m *ForumModel) ShowUserNotification(userID int) ([]*Notification, error) { //TODO: write following function, which should output all notification from table, then add several functions for forum_likes and forum_dislikes, remove and edit
-	stmt := `SELECT user_name, body, status, forum_link
+func (m *ForumModel) ShowUserNotification(userID int) ([]*Notification, error) {
+	stmt := `SELECT id, user_name, body, status, forum_link
 	FROM forum_notifications
 	WHERE user_id = ?;`
 
@@ -25,7 +26,7 @@ func (m *ForumModel) ShowUserNotification(userID int) ([]*Notification, error) {
 	for rows.Next() {
 		notification := &Notification{}
 
-		err := rows.Scan(&notification.UserCommented, &notification.Body, &notification.Status, &notification.ForumID)
+		err := rows.Scan(&notification.ID, &notification.UserCommented, &notification.Body, &notification.Status, &notification.ForumID)
 		if err != nil {
 			return nil, err
 		}
@@ -38,4 +39,15 @@ func (m *ForumModel) ShowUserNotification(userID int) ([]*Notification, error) {
 	}
 
 	return notifications, nil
+}
+
+func (m *ForumModel) RemoveUserNotification(id int) error {
+	stmt := `DELETE FROM forum_notifications WHERE id = ?;`
+
+	_, err := m.DB.Exec(stmt, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

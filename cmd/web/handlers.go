@@ -239,6 +239,26 @@ func (app *application) userNotification(w http.ResponseWriter, r *http.Request)
 	app.render(w, http.StatusOK, "notification.tmpl.html", data)
 }
 
+func (app *application) userNotificationRemove(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	idStr := parts[4]
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	err = app.forums.RemoveUserNotification(id)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/forum/notification", http.StatusSeeOther)
+}
+
 func (app *application) forumCategory(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/forum/category" {
 		app.notFound(w)
@@ -1481,7 +1501,6 @@ func (app *application) ForumRemoveCommentPost(w http.ResponseWriter, r *http.Re
 	forumID, err := strconv.Atoi(idStr)
 	if err != nil || forumID < 1 {
 		fmt.Println(idStr)
-		http.NotFound(w, r)
 		return
 	}
 
@@ -1489,7 +1508,6 @@ func (app *application) ForumRemoveCommentPost(w http.ResponseWriter, r *http.Re
 	commentID, err := strconv.Atoi(idStr)
 	if err != nil || commentID < 1 {
 		fmt.Println(idStr)
-		http.NotFound(w, r)
 		return
 	}
 
@@ -1514,6 +1532,7 @@ func (app *application) ForumRemoveCommentPost(w http.ResponseWriter, r *http.Re
 
 	if userID != userFromForum {
 		app.clientError(w, http.StatusBadRequest)
+		return
 	}
 
 	err = app.forumComment.RemoveCommentPost(commentID)

@@ -66,5 +66,8 @@ func (app *application) routes() http.Handler {
 	userNotificationSection := http.HandlerFunc(app.userNotification)
 	mux.Handle("/user/notification", app.requireAuthentication(userNotificationSection))
 
+	userNotificationSectionRemove := http.HandlerFunc(app.userNotificationRemove)
+	mux.Handle("/user/notification/remove/", app.requireAuthentication(userNotificationSectionRemove))
+
 	return app.recoverPanic(app.logRequest(secureHeaders(rateLimitMiddleware(mux))))
 }
