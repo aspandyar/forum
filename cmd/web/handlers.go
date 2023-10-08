@@ -60,7 +60,6 @@ type forumCommentForm struct {
 	validator.Validator
 }
 
-// Замените на свои данные OAuth 2.0
 const (
 	clientID        = "30519126384-v31k4ahraui4a59kmev21ju6353ne17p.apps.googleusercontent.com"
 	clientGitID     = "d110450fd3d4bae1c7bb"
@@ -75,7 +74,6 @@ const (
 	AdminRole     = 4
 )
 
-// Данные о пользователе
 type UserInfo struct {
 	ID       string `json:"id"`
 	Email    string `json:"email"`
@@ -260,7 +258,7 @@ func (app *application) userNotification(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	notifications, err := app.forums.ShowUserNotification(userID)
+	notifications, err := app.forums.ShowUserNotification(role)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -543,6 +541,7 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 		app.serverError(w, err)
 		return
 	}
+
 	userID, _, err := app.sessions.GetSession(cookie.Value)
 	if err != nil {
 		app.serverError(w, err)
@@ -555,7 +554,13 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/forum/view/%d", id), http.StatusSeeOther)
+	err = app.forums.AskForNewForum(id, userID, form.Title+"\n"+form.Content)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (app *application) handleForumEdit(w http.ResponseWriter, r *http.Request) {

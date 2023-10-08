@@ -1,5 +1,7 @@
 package models
 
+import "errors"
+
 type Notification struct {
 	ID              int
 	UserID          int
@@ -10,6 +12,13 @@ type Notification struct {
 	Status          string
 }
 
+const (
+	ModeratorRole = 3
+	AdminRole     = 4
+	AdminStatus   = "admin"
+	ModerStatus   = "moder"
+)
+
 func (m *ForumModel) AskForModeration(userID int) error {
 	var err error
 
@@ -19,9 +28,9 @@ func (m *ForumModel) AskForModeration(userID int) error {
 	not := *&Notification{}
 
 	not.Body = "asked for moder"
-	not.Status = "afm" // a - ask, f - for, m - moder
-	not.ForumID = 0    // not needed here
-	not.UserID = 1     // admin id always = 1
+	not.Status = "admin" // a - ask, f - for, m - moder
+	not.ForumID = 0      // not needed here
+	not.UserID = 1       // admin id always = 1
 	not.UserCommented, err = m.GetUserByUserID(userID)
 	not.UserCommentedID = userID
 
@@ -33,12 +42,44 @@ func (m *ForumModel) AskForModeration(userID int) error {
 	return nil
 }
 
-func (m *ForumModel) ShowUserNotification(userID int) ([]*Notification, error) {
+func (m *ForumModel) AskForNewForum(forumID, userID int, body string) error {
+	var err error
+
+	stmt := `INSERT INTO forum_notifications (user_name, body, status, forum_link, user_id, user_not_id)
+	VALUES(?, ?, ?, ?, ?, ?)`
+
+	not := *&Notification{}
+
+	not.Body = body
+	not.Status = "moder"
+	not.ForumID = forumID
+	not.UserCommentedID = -1 // not needed  here
+	not.UserCommented, err = m.GetUserByUserID(userID)
+	not.UserID = userID
+
+	_, err = m.DB.Exec(stmt, not.UserCommented, not.Body, not.Status, not.ForumID, not.UserID, not.UserCommentedID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ForumModel) ShowUserNotification(role int) ([]*Notification, error) {
 	stmt := `SELECT id, user_name, body, status, forum_link, user_id, user_not_id
 		FROM forum_notifications
-		WHERE user_id = ?;`
+		WHERE status = ?;`
 
-	rows, err := m.DB.Query(stmt, userID)
+	var status string
+	if role == AdminRole {
+		status = AdminStatus
+	} else if role == ModeratorRole {
+		status = ModerStatus
+	} else {
+		return nil, errors.New("how u get here?")
+	}
+
+	rows, err := m.DB.Query(stmt, status)
 	if err != nil {
 		return nil, err
 	}

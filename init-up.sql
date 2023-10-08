@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS forums (
     created DATETIME NOT NULL,
     expires DATETIME NOT NULL,
     image_path TEXT,
+    status INT NOT NULL DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
@@ -24,8 +25,6 @@ CREATE TABLE IF NOT EXISTS roles (
     user_id INTEGER NOT NULL UNIQUE,
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
-
--- INSERT INTO roles (role, user_id) VALUES (4, 1);
 
 CREATE TABLE IF NOT EXISTS sessions (
     token CHAR(43) PRIMARY KEY,
