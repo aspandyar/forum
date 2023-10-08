@@ -1554,7 +1554,7 @@ func (app *application) isOwnForum(userID int, r *http.Request) bool {
 		return false
 	}
 
-	return time.Now().Before(expiry) && userID == getUserID
+	return time.Now().Before(expiry) && (userID == getUserID || getUserID == adminID)
 }
 
 func (app *application) forumIsLike(w http.ResponseWriter, r *http.Request) {
@@ -1940,21 +1940,10 @@ func (app *application) ForumRemoveCommentPost(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	var userID int
+	isOwn := app.isOwnForum(userFromForum, r)
 
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		userID = 0
-	} else {
-		userID, _, err = app.sessions.GetSession(cookie.Value)
-		if err != nil {
-			app.serverError(w, err)
-			return
-		}
-	}
-
-	if userID != userFromForum {
-		app.clientError(w, http.StatusBadRequest)
+	if !isOwn {
+		app.clientError(w, http.StatusMethodNotAllowed)
 		return
 	}
 

@@ -191,7 +191,7 @@ func (m *ForumModel) Get(id, userId int, isOwnForum bool) (*Forum, error) {
 			return nil, err
 		}
 
-		if givenUser == userId {
+		if givenUser == userId || userId == AdminID {
 			userComment.IsOwnComment = true
 			userComment.ForumID = f.ID
 		} else {
