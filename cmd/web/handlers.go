@@ -75,10 +75,12 @@ const (
 	clientSecret = "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"
 	redirectURI  = "https://localhost:4000/callback"
 
+	adminID = 1
+
 	guestRole     = 1
 	userRole      = 2
-	ModeratorRole = 3
-	AdminRole     = 4
+	moderatorRole = 3
+	adminRole     = 4
 
 	visibleStatus   = 1
 	invisibleStatus = 0
@@ -99,7 +101,7 @@ func (app *application) createAdmin() error {
 	adminPassword := os.Getenv("ADMIN_PASSWORD")
 	adminEmail := os.Getenv("ADMIN_EMAIL")
 
-	err = app.users.Insert(adminName, adminEmail, adminPassword, AdminRole)
+	err = app.users.Insert(adminName, adminEmail, adminPassword, adminRole)
 	var sqliteErr sqlite3.Error
 	if errors.Is(err, models.ErrDuplicateEmail) || strings.Contains(sqliteErr.Error(), "UNIQUE constraint failed") {
 		return nil
@@ -263,7 +265,7 @@ func (app *application) userNotification(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if role != AdminRole && role != ModeratorRole {
+	if role != adminRole && role != moderatorRole {
 		app.clientError(w, http.StatusMethodNotAllowed)
 		return
 	}
@@ -300,7 +302,7 @@ func (app *application) userNotificationRemove(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if role != AdminRole && role != ModeratorRole {
+	if role != adminRole && role != moderatorRole {
 		app.clientError(w, http.StatusMethodNotAllowed)
 		return
 	}
@@ -343,7 +345,7 @@ func (app *application) forumReportRemoveHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if role != AdminRole {
+	if role != adminRole {
 		app.clientError(w, http.StatusMethodNotAllowed)
 		return
 	}
@@ -351,7 +353,14 @@ func (app *application) forumReportRemoveHandler(w http.ResponseWriter, r *http.
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
 
-	idStr := parts[5]
+	idStr := parts[6]
+	getUserID, err := strconv.Atoi(idStr)
+	if err != nil || getUserID < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	idStr = parts[5]
 	forumID, err := strconv.Atoi(idStr)
 	if err != nil || forumID < 1 {
 		http.NotFound(w, r)
@@ -365,10 +374,13 @@ func (app *application) forumReportRemoveHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	println("here")
-	fmt.Println(forumID, id)
-
 	err = app.forums.ChangeForumStatus(forumID, invisibleStatus)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.forums.AnswerFromAdmin(getUserID, "approved")
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -401,7 +413,7 @@ func (app *application) userModerationDone(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err = app.forums.ChangeUserRole(userID, ModeratorRole)
+	err = app.forums.ChangeUserRole(userID, moderatorRole)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -480,7 +492,7 @@ func (app *application) ForumReportPost(w http.ResponseWriter, r *http.Request) 
 		reportDetails: r.PostForm.Get("reportDetails"),
 	}
 
-	form.CheckField(validator.MaxChars(form.reportTypes, 50), "tags", "This field cannot be more than 50 characters long")
+	form.CheckField(validator.MaxChars(form.reportTypes, 200), "tags", "This field cannot be more than 200 characters long")
 
 	if !form.Valid() {
 		data := app.newTemplateData(r)
@@ -499,7 +511,7 @@ func (app *application) ForumReportPost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = app.forums.ReportForum(forumID, form.reportTypes+" "+form.reportDetails)
+	err = app.forums.ReportForum(forumID, adminID, form.reportTypes+" "+form.reportDetails)
 	if err != nil {
 		app.serverError(w, err)
 		return
