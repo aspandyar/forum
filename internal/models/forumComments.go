@@ -27,11 +27,11 @@ func (m *ForumCommentModel) CommentPost(forumID, userID int, comment string) (in
 	return forumID, nil
 }
 
-func (m *ForumCommentModel) CommentPostNotification(forumID, userID int, comment, user_name string) error {
+func (m *ForumCommentModel) CommentPostNotification(forumID, userID int, comment, userName string) error {
 	stmt := `INSERT INTO forum_notifications (user_name, body, status, forum_link, user_id) 
 	VALUES (?, ?, ?, ?, ?);`
 
-	_, err := m.DB.Exec(stmt, user_name, comment, "commented", forumID, userID)
+	_, err := m.DB.Exec(stmt, userName, comment, "commented", forumID, userID)
 	if err != nil {
 		return err
 	}

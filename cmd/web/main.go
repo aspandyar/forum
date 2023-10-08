@@ -56,7 +56,6 @@ func main() {
 		errorLog.Fatal(err)
 	}
 	defer db.Close()
-
 	readDB(initSqlFileName, db)
 
 	templateCache, err := newTemplateCache()

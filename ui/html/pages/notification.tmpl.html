@@ -1,31 +1,45 @@
 {{define "title"}}Home{{end}}
 
 {{define "main"}}
-    {{if .Form}}
-        <table>
-            <thead>
-                <tr>
-                    <th>User Commented</th>
-                    <th>Status</th>
-                    <th>Body</th>
-                    <th>Forum</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{ range .Form }}
-                <tr>
-                    <td>{{ .UserCommented }}</td>
-                    <td>{{ .Status }}</td>
-                    <td>{{ .Body }}</td>
-                    <td>
-                        <a href = "/forum/view/{{ .ForumID }}">your post</a> |
-                        <a href="/user/notification/remove/{{.ID}}">remove</a>
-                    </td>
-                </tr>
-                {{ end }}
-            </tbody>
-        </table>
-    {{else}}
-        <p>There's nothing to see here... yet!</p>
-    {{end}}
+{{if .Form}}
+<table>
+    <thead>
+        <tr>
+            <th>User Commented</th>
+            <th>Status</th>
+            <th>Body</th>
+            {{ range .Form }}
+            {{if ne .ForumID 0}}
+            <th>
+                Forum
+            </th>
+            {{end}}
+            {{end}}
+            <th>
+                action
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        {{ range .Form }}
+        <tr>
+            <td>{{ .UserCommented }}</td>
+            <td>{{ .Status }}</td>
+            <td>{{ .Body }}</td>
+            {{if ne .ForumID 0}}
+            <td>
+                <a href="/forum/view/{{ .ForumID }}">reported post</a>
+            </td>
+            {{end}}
+            <td>
+                <a href="/moderation/accept/{{.ID}}/{{.UserCommentedID}}">accept</a>
+                <a href="/user/notification/remove/{{.ID}}">remove</a>
+            </td>
+        </tr>
+        {{ end }}
+    </tbody>
+</table>
+{{else}}
+<p>There's nothing to see here... yet!</p>
+{{end}}
 {{end}}

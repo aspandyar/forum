@@ -5,23 +5,28 @@
         <a href="/showAll">All Forums</a>|
         <a href="/forum/category">Category</a>
         {{if .IsAuthenticated}}
-            | <a href="/forum/create">Create forum</a>|
-            <a href="/forum/allLikes">Your reactions</a>|
-            <a href="/forum/allPosts">Your posts</a>|
-            <a href="/forum/all_comments">Your comments</a>
-            {{if or (eq .Role 3) (eq .Role 4)}}
-                | <a href="/user/notification">Your notification</a>
-            {{end}}
+        | <a href="/forum/create">Create forum</a>|
+        <a href="/forum/allLikes">Your reactions</a>|
+        <a href="/forum/allPosts">Your posts</a>|
+        <a href="/forum/all_comments">Your comments</a>
+        {{if or (eq .Role 3) (eq .Role 4)}}
+        | <a href="/user/notification">Your notification</a>
+        {{end}}
         {{end}}
     </div>
     <div class="auth-section">
         {{if .IsAuthenticated}}
-            <form action="/user/logout" method="POST">
-                <button>Logout</button>
-            </form>
+        {{if eq .Role 2}}
+        <form action="/moderation/ask" method="POST">
+            <button>Ask for moder</button>
+        </form>
+        {{end}}
+        <form action="/user/logout" method="POST">
+            <button>Logout</button>
+        </form>
         {{else}}
-            <a href="/user/signup">Signup</a>
-            <a href="/user/login">Login</a>
+        <a href="/user/signup">Signup</a>
+        <a href="/user/login">Login</a>
         {{end}}
     </div>
 </nav>

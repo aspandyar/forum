@@ -19,6 +19,7 @@ import (
 
 	"github.com/aspandyar/forum/internal/models"
 	"github.com/aspandyar/forum/internal/validator"
+	"github.com/mattn/go-sqlite3"
 )
 
 type forumCreateForm struct {
@@ -91,7 +92,17 @@ func (app *application) createAdmin() error {
 	adminEmail := os.Getenv("ADMIN_EMAIL")
 
 	err = app.users.Insert(adminName, adminEmail, adminPassword, AdminRole)
-	return err
+	var sqliteErr sqlite3.Error
+	if errors.Is(err, models.ErrDuplicateEmail) || strings.Contains(sqliteErr.Error(), "UNIQUE constraint failed") {
+		return nil
+	}
+
+	err = app.users.GetAdminUser()
+	if errors.Is(err, models.ErrDuplicateEmail) || strings.Contains(sqliteErr.Error(), "UNIQUE constraint failed") {
+		return nil
+	}
+
+	return nil
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -226,11 +237,6 @@ func (app *application) forumAllUserComments(w http.ResponseWriter, r *http.Requ
 }
 
 func (app *application) userNotification(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/user/notification" {
-		app.notFound(w)
-		return
-	}
-
 	cookie, err := r.Cookie("session")
 	if err != nil {
 		app.serverError(w, err)
@@ -240,6 +246,17 @@ func (app *application) userNotification(w http.ResponseWriter, r *http.Request)
 	userID, _, err := app.sessions.GetSession(cookie.Value)
 	if err != nil {
 		app.serverError(w, err)
+		return
+	}
+
+	role, err := app.forums.GetRoleByUserID(userID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	if role != AdminRole && role != ModeratorRole {
+		app.clientError(w, http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -257,6 +274,23 @@ func (app *application) userNotification(w http.ResponseWriter, r *http.Request)
 }
 
 func (app *application) userNotificationRemove(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	adminID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	if adminID != 1 {
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
+	}
+
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
 
@@ -273,7 +307,40 @@ func (app *application) userNotificationRemove(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	http.Redirect(w, r, "/forum/notification", http.StatusSeeOther)
+	http.Redirect(w, r, "/user/notification", http.StatusSeeOther)
+}
+
+func (app *application) userModerationDone(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	idStr := parts[4]
+	userID, err := strconv.Atoi(idStr)
+	if err != nil || userID < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	idStr = parts[3]
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	err = app.forums.ChangeUserRole(userID, ModeratorRole)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.forums.RemoveUserNotification(id)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/user/notification", http.StatusSeeOther)
 }
 
 func (app *application) forumCategory(w http.ResponseWriter, r *http.Request) {
@@ -1123,6 +1190,28 @@ func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+func (app *application) moderAskHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	userID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.forums.AskForModeration(userID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
 func (app *application) isAuthenticated(r *http.Request) bool {
 	cookie, err := r.Cookie("session")
 	if err != nil {
@@ -1367,25 +1456,25 @@ func (app *application) ForumCommentPost(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	userIDfromForum, err := app.forums.GetUserIDFromForum(form.ForumID)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
+	// userIDfromForum, err := app.forums.GetUserIDFromForum(form.ForumID)
+	// if err != nil {
+	// 	app.serverError(w, err)
+	// 	return
+	// }
 
-	if userIDfromForum != form.UserID {
-		user_name, err := app.forums.GetUserByUserIDInComment(form.UserID)
-		if err != nil {
-			app.serverError(w, err)
-			return
-		}
+	// if userIDfromForum != form.UserID {
+	// 	user_name, err := app.forums.GetUserByUserIDInComment(form.UserID)
+	// 	if err != nil {
+	// 		app.serverError(w, err)
+	// 		return
+	// 	}
 
-		err = app.forumComment.CommentPostNotification(form.ForumID, userIDfromForum, form.Comment, user_name)
-		if err != nil {
-			app.serverError(w, err)
-			return
-		}
-	}
+	// 	err = app.forumComment.CommentPostNotification(form.ForumID, userIDfromForum, form.Comment, user_name)
+	// 	if err != nil {
+	// 		app.serverError(w, err)
+	// 		return
+	// 	}
+	// }
 
 	http.Redirect(w, r, fmt.Sprintf("/forum/view/%d", id), http.StatusSeeOther)
 }

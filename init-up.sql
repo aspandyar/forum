@@ -21,11 +21,11 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS roles (
     if INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     role INTEGER NOT NULL,
-    user_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL UNIQUE,
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
-INSERT INTO roles (role, user_id) VALUES (4, 1);
+-- INSERT INTO roles (role, user_id) VALUES (4, 1);
 
 CREATE TABLE IF NOT EXISTS sessions (
     token CHAR(43) PRIMARY KEY,
@@ -59,5 +59,6 @@ CREATE TABLE IF NOT EXISTS forum_notifications (
     body TEXT NOT NULL,
     status TEXT NOT NULL,
     forum_link TEXT NOT NULL,
-    user_id INTEGER NOT NULL
+    user_id INTEGER NOT NULL,
+    user_not_id INT NOT NULL
 );

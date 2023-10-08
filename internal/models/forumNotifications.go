@@ -1,18 +1,42 @@
 package models
 
 type Notification struct {
-	ID            int
-	UserID        int
-	ForumID       int
-	UserCommented string
-	Body          string
-	Status        string
+	ID              int
+	UserID          int
+	ForumID         int
+	UserCommented   string
+	UserCommentedID int
+	Body            string
+	Status          string
+}
+
+func (m *ForumModel) AskForModeration(userID int) error {
+	var err error
+
+	stmt := `INSERT INTO forum_notifications (user_name, body, status, forum_link, user_id, user_not_id)
+	VALUES(?, ?, ?, ?, ?, ?)`
+
+	not := *&Notification{}
+
+	not.Body = "asked for moder"
+	not.Status = "afm" // a - ask, f - for, m - moder
+	not.ForumID = 0    // not needed here
+	not.UserID = 1     // admin id always = 1
+	not.UserCommented, err = m.GetUserByUserID(userID)
+	not.UserCommentedID = userID
+
+	_, err = m.DB.Exec(stmt, not.UserCommented, not.Body, not.Status, not.ForumID, not.UserID, not.UserCommentedID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (m *ForumModel) ShowUserNotification(userID int) ([]*Notification, error) {
-	stmt := `SELECT id, user_name, body, status, forum_link
-	FROM forum_notifications
-	WHERE user_id = ?;`
+	stmt := `SELECT id, user_name, body, status, forum_link, user_id, user_not_id
+		FROM forum_notifications
+		WHERE user_id = ?;`
 
 	rows, err := m.DB.Query(stmt, userID)
 	if err != nil {
@@ -26,7 +50,7 @@ func (m *ForumModel) ShowUserNotification(userID int) ([]*Notification, error) {
 	for rows.Next() {
 		notification := &Notification{}
 
-		err := rows.Scan(&notification.ID, &notification.UserCommented, &notification.Body, &notification.Status, &notification.ForumID)
+		err := rows.Scan(&notification.ID, &notification.UserCommented, &notification.Body, &notification.Status, &notification.ForumID, &notification.UserID, &notification.UserCommentedID)
 		if err != nil {
 			return nil, err
 		}
@@ -41,6 +65,38 @@ func (m *ForumModel) ShowUserNotification(userID int) ([]*Notification, error) {
 	return notifications, nil
 }
 
+// func (m *ForumModel) ShowUserNotification(userID int) ([]*Notification, error) {
+// 	stmt := `SELECT id, user_name, body, status, forum_link
+// 	FROM forum_notifications
+// 	WHERE user_id = ?;`
+
+// 	rows, err := m.DB.Query(stmt, userID)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	defer rows.Close()
+
+// 	notifications := []*Notification{}
+
+// 	for rows.Next() {
+// 		notification := &Notification{}
+
+// 		err := rows.Scan(&notification.ID, &notification.UserCommented, &notification.Body, &notification.Status, &notification.ForumID)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		notifications = append(notifications, notification)
+// 	}
+
+// 	if err = rows.Err(); err != nil {
+// 		return nil, err
+// 	}
+
+// 	return notifications, nil
+// }
+
 func (m *ForumModel) RemoveUserNotification(id int) error {
 	stmt := `DELETE FROM forum_notifications WHERE id = ?;`
 
@@ -50,4 +106,30 @@ func (m *ForumModel) RemoveUserNotification(id int) error {
 	}
 
 	return nil
+}
+
+func (m *ForumModel) ChangeUserRole(userID, role int) error {
+	stmt := `UPDATE roles
+	SET role = ? WHERE user_id = ?`
+
+	_, err := m.DB.Exec(stmt, role, userID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ForumModel) GetRoleByUserID(userID int) (int, error) {
+	stmt := `SELECT role FROM roles WHERE user_id = ?`
+
+	row := m.DB.QueryRow(stmt, userID)
+
+	var role int
+	err := row.Scan(&role)
+	if err != nil {
+		return 0, err
+	}
+
+	return role, nil
 }

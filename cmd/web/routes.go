@@ -27,6 +27,15 @@ func (app *application) routes() http.Handler {
 
 	mux.HandleFunc("/user/login", app.userLogin)
 
+	userLogout := http.HandlerFunc(app.userLogoutPost)
+	mux.Handle("/user/logout", app.requireAuthentication(userLogout))
+
+	moderAsk := http.HandlerFunc(app.moderAskHandler)
+	mux.Handle("/moderation/ask", app.requireAuthentication(moderAsk))
+
+	moderAccpet := http.HandlerFunc(app.userModerationDone)
+	mux.Handle("/moderation/accept/", app.requireAuthentication(moderAccpet))
+
 	forumCreate := http.HandlerFunc(app.handleForumCreate)
 	mux.Handle("/forum/create", app.requireAuthentication(forumCreate))
 
@@ -35,9 +44,6 @@ func (app *application) routes() http.Handler {
 
 	forumRemove := http.HandlerFunc(app.handleForumRemove)
 	mux.Handle("/forum/remove/", app.requireAuthentication(forumRemove))
-
-	userLogout := http.HandlerFunc(app.userLogoutPost)
-	mux.Handle("/user/logout", app.requireAuthentication(userLogout))
 
 	forumLikeStatus := http.HandlerFunc(app.forumIsLike)
 	mux.Handle("/forum/like/", app.requireAuthentication(forumLikeStatus))

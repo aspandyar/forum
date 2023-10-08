@@ -98,3 +98,14 @@ func (m *UserModel) GetUserRole(user_id int) (int, error) {
 
 	return role, nil
 }
+
+func (m *UserModel) GetAdminUser() error {
+	stmt := `INSERT INTO roles (role, user_id) VALUES (4, 1);`
+
+	_, err := m.DB.Exec(stmt)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
