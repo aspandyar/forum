@@ -39,6 +39,9 @@ func (app *application) routes() http.Handler {
 	forumAccept := http.HandlerFunc(app.forumAcceptHandler)
 	mux.Handle("/moderation/forum/", app.requireAuthentication(forumAccept))
 
+	forumReport := http.HandlerFunc(app.forumReportHandler)
+	mux.Handle("/moderation/report/", app.requireAuthentication(forumReport))
+
 	forumCreate := http.HandlerFunc(app.handleForumCreate)
 	mux.Handle("/forum/create", app.requireAuthentication(forumCreate))
 
@@ -77,6 +80,9 @@ func (app *application) routes() http.Handler {
 
 	userNotificationSectionRemove := http.HandlerFunc(app.userNotificationRemove)
 	mux.Handle("/user/notification/remove/", app.requireAuthentication(userNotificationSectionRemove))
+
+	forumReportRemove := http.HandlerFunc(app.forumReportRemoveHandler)
+	mux.Handle("/user/report/remove/", app.requireAuthentication(forumReportRemove))
 
 	return app.recoverPanic(app.logRequest(secureHeaders(rateLimitMiddleware(mux))))
 }

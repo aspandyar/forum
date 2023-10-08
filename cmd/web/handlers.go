@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -60,6 +61,12 @@ type forumCommentForm struct {
 	validator.Validator
 }
 
+type forumReportForm struct {
+	reportTypes   string
+	reportDetails string
+	validator.Validator
+}
+
 const (
 	clientID        = "30519126384-v31k4ahraui4a59kmev21ju6353ne17p.apps.googleusercontent.com"
 	clientGitID     = "d110450fd3d4bae1c7bb"
@@ -72,6 +79,9 @@ const (
 	userRole      = 2
 	ModeratorRole = 3
 	AdminRole     = 4
+
+	visibleStatus   = 1
+	invisibleStatus = 0
 )
 
 type UserInfo struct {
@@ -314,6 +324,65 @@ func (app *application) userNotificationRemove(w http.ResponseWriter, r *http.Re
 	http.Redirect(w, r, "/user/notification", http.StatusSeeOther)
 }
 
+func (app *application) forumReportRemoveHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	adminID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	role, err := app.forums.GetRoleByUserID(adminID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	if role != AdminRole {
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
+	}
+
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	idStr := parts[5]
+	forumID, err := strconv.Atoi(idStr)
+	if err != nil || forumID < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	idStr = parts[4]
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	println("here")
+	fmt.Println(forumID, id)
+
+	err = app.forums.ChangeForumStatus(forumID, invisibleStatus)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.forums.RemoveUserNotification(id)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/user/notification", http.StatusSeeOther)
+}
+
 func (app *application) userModerationDone(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
@@ -365,7 +434,7 @@ func (app *application) forumAcceptHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err = app.forums.ChangeForumStatus(fourmID)
+	err = app.forums.ChangeForumStatus(fourmID, visibleStatus)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -378,6 +447,65 @@ func (app *application) forumAcceptHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	http.Redirect(w, r, "/user/notification", http.StatusSeeOther)
+}
+
+func (app *application) forumReportHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		app.ForumReportGet(w, r)
+	case http.MethodPost:
+		app.ForumReportPost(w, r)
+	default:
+		w.Header().Set("Allow", http.MethodPost+", "+http.MethodGet)
+		app.clientError(w, http.StatusMethodNotAllowed)
+	}
+}
+
+func (app *application) ForumReportGet(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	app.render(w, http.StatusOK, "report.tmpl.html", data)
+}
+
+func (app *application) ForumReportPost(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	types := r.PostForm["reportType"]
+
+	form := forumReportForm{
+		reportTypes:   strings.Join(types, ", "),
+		reportDetails: r.PostForm.Get("reportDetails"),
+	}
+
+	form.CheckField(validator.MaxChars(form.reportTypes, 50), "tags", "This field cannot be more than 50 characters long")
+
+	if !form.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "report.tmpl.html", data)
+		return
+	}
+
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	idStr := parts[3]
+	forumID, err := strconv.Atoi(idStr)
+	if err != nil || forumID < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	err = app.forums.ReportForum(forumID, form.reportTypes+" "+form.reportDetails)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/forum/view/%d", forumID), http.StatusSeeOther)
 }
 
 func (app *application) forumCategory(w http.ResponseWriter, r *http.Request) {
@@ -451,6 +579,10 @@ func (app *application) forumView(w http.ResponseWriter, r *http.Request) {
 
 	userFromForum, err := app.forums.GetUserIDFromForum(id)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			app.notFound(w)
+			return
+		}
 		app.serverError(w, err)
 		return
 	}
@@ -469,7 +601,7 @@ func (app *application) forumView(w http.ResponseWriter, r *http.Request) {
 
 	data := app.newTemplateData(r)
 
-	data.Forum = forum
+	data.Form = forum
 
 	app.render(w, http.StatusOK, "view.tmpl.html", data)
 }

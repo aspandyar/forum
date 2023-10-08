@@ -28,11 +28,40 @@ func (m *ForumModel) AskForModeration(userID int) error {
 	not := *&Notification{}
 
 	not.Body = "asked for moder"
-	not.Status = "admin" // a - ask, f - for, m - moder
-	not.ForumID = 0      // not needed here
-	not.UserID = 1       // admin id always = 1
+	not.Status = "admin"
+	not.ForumID = 0 // not needed here
+	not.UserID = AdminRole
 	not.UserCommented, err = m.GetUserByUserID(userID)
 	not.UserCommentedID = userID
+
+	_, err = m.DB.Exec(stmt, not.UserCommented, not.Body, not.Status, not.ForumID, not.UserID, not.UserCommentedID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ForumModel) ReportForum(forumID int, body string) error {
+	stmt := `INSERT INTO forum_notifications (user_name, body, status, forum_link, user_id, user_not_id)
+	VALUES(?, ?, ?, ?, ?, ?)`
+	not := *&Notification{}
+
+	var user User
+	user, err := m.GetUserByForumID(forumID)
+	if err != nil {
+		return err
+	}
+
+	not.Body = body
+	not.Status = "admin"
+	not.ForumID = forumID
+	not.UserID = AdminRole
+	not.UserCommentedID = user.ID
+	not.UserCommented, err = m.GetUserByUserID(user.ID)
+	if err != nil {
+		return err
+	}
 
 	_, err = m.DB.Exec(stmt, not.UserCommented, not.Body, not.Status, not.ForumID, not.UserID, not.UserCommentedID)
 	if err != nil {

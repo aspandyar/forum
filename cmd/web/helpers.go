@@ -56,20 +56,16 @@ func (app *application) newTemplateData(r *http.Request) *templateData {
 }
 
 func (app *application) processTags(selectedTags []string, customTagsStr string) []string {
-	// Split customTagsStr into a slice of tags
 	customTags := strings.Split(customTagsStr, ",")
 
-	// Create a map to store unique tags
 	uniqueTags := make(map[string]bool)
 
-	// Add selectedTags to the map
 	for _, tag := range selectedTags {
-		if tag != "" && tag != " " { // Skip empty or space elements
+		if tag != "" && tag != " " {
 			uniqueTags[tag] = true
 		}
 	}
 
-	// Add customTags to the map
 	for _, tag := range customTags {
 		tag = strings.TrimSpace(tag)
 		if tag != "" { // Skip empty elements
@@ -77,7 +73,6 @@ func (app *application) processTags(selectedTags []string, customTagsStr string)
 		}
 	}
 
-	// Convert uniqueTags map keys back to a slice of strings
 	var tags []string
 	for tag := range uniqueTags {
 		tags = append(tags, tag)

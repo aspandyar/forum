@@ -27,20 +27,33 @@
             <td>{{ .Status }}</td>
             <td>{{ .Body }}</td>
             {{if ne .ForumID 0}}
+            {{if ne .UserCommentedID -1}}
             <td>
-                reported post<!-- <a href="/forum/view/{{ .ForumID }}">reported post</a> -->
-            </td>
-            {{end}}
-            {{if eq .Status "moder"}}
-            <td>
-                <a href="/moderation/forum/{{.ID}}/{{.ForumID}}">accept</a> | 
-                <a href="/user/notification/remove/{{.ID}}">remove</a>
+                <a href="/forum/view/{{ .ForumID }}">reported post</a>
             </td>
             {{else}}
             <td>
-                <a href="/moderation/accept/{{.ID}}/{{.UserCommentedID}}">accept</a> | 
+                created post
+            </td>
+            {{end}}
+            {{end}}
+            {{if eq .Status "moder"}}
+            <td>
+                <a href="/moderation/forum/{{.ID}}/{{.ForumID}}">accept</a> |
                 <a href="/user/notification/remove/{{.ID}}">remove</a>
             </td>
+            {{else}}
+            {{if ne .ForumID 0}}
+            <td>
+                <a href="/user/notification/remove/{{.ID}}">skip</a> |
+                <a href="/user/report/remove/{{.ID}}/{{.ForumID}}">remove</a>
+            </td>
+            {{else}}
+            <td>
+                <a href="/moderation/accept/{{.ID}}/{{.UserCommentedID}}">accept</a> |
+                <a href="/user/notification/remove/{{.ID}}">remove</a>
+            </td>
+            {{end}}
             {{end}}
         </tr>
         {{ end }}

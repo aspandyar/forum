@@ -1,0 +1,25 @@
+{{define "title"}}Report{{end}}
+
+{{define "main"}}
+<h2>Report Content</h2>
+<form method="post">
+    <label>
+        <input type="checkbox" name="reportType" value="spam"> Spam
+    </label>
+    <label>
+        <input type="checkbox" name="reportType" value="inappropriate"> Inappropriate
+    </label>
+    <label>
+        <input type="checkbox" name="reportType" value="harassment"> Harassment
+    </label>
+    <label>
+        <input type="checkbox" name="reportType" value="violence"> Violence
+    </label>
+    <label>
+        <input type="checkbox" name="reportType" value="copyright"> Copyright Violation
+    </label><br>
+    <label for="reportDetails">Additional Details:</label>
+    <textarea id="reportDetails" name="reportDetails" rows="4" cols="50"></textarea><br>
+    <input type="submit" value="Submit Report">
+</form>
+{{end}}

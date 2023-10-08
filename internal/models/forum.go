@@ -847,11 +847,30 @@ func (m *ForumModel) GetUserByUserID(userID int) (string, error) {
 	return user.Name, nil
 }
 
-func (m *ForumModel) ChangeForumStatus(forumID int) error {
-	stmt := `UPDATE forums
-	SET status = 1 WHERE id = ?`
+func (m *ForumModel) GetUserByForumID(forumID int) (User, error) {
+	stmt := `SELECT user_id FROM forums WHERE id = ?`
 
-	_, err := m.DB.Exec(stmt, forumID)
+	row := m.DB.QueryRow(stmt, forumID)
+
+	var user User
+	err := row.Scan(&user.ID)
+	if err != nil {
+		return user, err
+	}
+
+	user.Name, err = m.GetUserByUserID(user.ID)
+	if err != nil {
+		return user, err
+	}
+
+	return user, nil
+}
+
+func (m *ForumModel) ChangeForumStatus(forumID int, status int) error {
+	stmt := `UPDATE forums
+	SET status = ? WHERE id = ?`
+
+	_, err := m.DB.Exec(stmt, status, forumID)
 	if err != nil {
 		return err
 	}
