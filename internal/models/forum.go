@@ -39,14 +39,6 @@ type userComment struct {
 	IsOwnComment  bool
 }
 
-type Notification struct {
-	UserID        int
-	ForumID       int
-	UserCommented string
-	Body          string
-	Status        int
-}
-
 type ForumModel struct {
 	DB *sql.DB
 }
@@ -56,7 +48,7 @@ func (m *ForumModel) Init(initSqlFileName string) error {
 	if err != nil {
 		log.Fatalf("Can't read SQL file %v", err)
 	}
-	// Execute all
+
 	_, err = m.DB.Exec(string(file))
 	if err != nil {
 		log.Fatalf("DB init error: %v", err)
@@ -199,7 +191,7 @@ func (m *ForumModel) Get(id, userId int, isOwnForum bool) (*Forum, error) {
 			return nil, err
 		}
 
-		if givenUser == userId {
+		if givenUser == userId || userId == AdminID {
 			userComment.IsOwnComment = true
 			userComment.ForumID = f.ID
 		} else {
@@ -455,7 +447,7 @@ func (m *ForumModel) GetEdit(forumID, userID int, isOwnForum bool, commentID int
 func (m *ForumModel) Latest() ([]*Forum, error) {
 	stmt := `SELECT id, title, content, tags, created, expires
 	FROM forums
-	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now')
+	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now') AND status = 1
 	ORDER BY id DESC
 	LIMIT 10;`
 
@@ -489,7 +481,7 @@ func (m *ForumModel) Latest() ([]*Forum, error) {
 func (m *ForumModel) ShowAll() ([]*Forum, error) {
 	stmt := `SELECT id, title, content, tags, created, expires
 	FROM forums
-	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now')
+	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now') AND status = 1
 	ORDER BY id DESC;`
 
 	rows, err := m.DB.Query(stmt)
@@ -541,13 +533,20 @@ func (m *ForumModel) Remove(forumID int) error {
 		return err
 	}
 
+	stmt = `DELETE FROM forum_notifications WHERE forum_link = ?;`
+
+	_, err = m.DB.Exec(stmt, forumID)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (m *ForumModel) ShowCategory(tags []string) ([]*Forum, error) {
 	stmt := `SELECT id, title, content, tags, created, expires
 	FROM forums
-	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now')
+	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now') AND status = 1
 	ORDER BY id DESC;`
 
 	rows, err := m.DB.Query(stmt)
@@ -584,7 +583,7 @@ func (m *ForumModel) ShowCategory(tags []string) ([]*Forum, error) {
 func (m *ForumModel) ShowAllUserPosts(userID int) ([]*Forum, error) {
 	stmt := `SELECT id, title, content, tags, created, expires
 	FROM forums 
-	WHERE user_id = ?;`
+	WHERE user_id = ? AND status = 1;`
 
 	rows, err := m.DB.Query(stmt, userID)
 	if err != nil {
@@ -613,153 +612,153 @@ func (m *ForumModel) ShowAllUserPosts(userID int) ([]*Forum, error) {
 	return forums, nil
 }
 
-func (m *ForumModel) ShowUserNotification(userID int) ([]*Notification, error) {
-	stmt := `SELECT id, title, content, tags, created, expires
-	FROM forums 
-	WHERE user_id = ?;`
+// func (m *ForumModel) ShowUserNotification(userID int) ([]*Notification, error) {
+// 	stmt := `SELECT id, title, content, tags, created, expires
+// 	FROM forums
+// 	WHERE user_id = ?;`
 
-	rows, err := m.DB.Query(stmt, userID)
-	if err != nil {
-		return nil, err
-	}
+// 	rows, err := m.DB.Query(stmt, userID)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	defer rows.Close()
+// 	defer rows.Close()
 
-	AllUserForums := []*Forum{}
+// 	AllUserForums := []*Forum{}
 
-	for rows.Next() {
-		f := &Forum{}
+// 	for rows.Next() {
+// 		f := &Forum{}
 
-		err := rows.Scan(&f.ID, &f.Title, &f.Content, &f.Tags, &f.Created, &f.Expires)
-		if err != nil {
-			return nil, err
-		}
+// 		err := rows.Scan(&f.ID, &f.Title, &f.Content, &f.Tags, &f.Created, &f.Expires)
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-		AllUserForums = append(AllUserForums, f)
-	}
+// 		AllUserForums = append(AllUserForums, f)
+// 	}
 
-	allNot := []*Notification{}
+// 	allNot := []*Notification{}
 
-	for _, userForums := range AllUserForums {
-		stmt = `SELECT comment, user_id
-		FROM forum_comments 
-		WHERE forum_id = ? AND user_id != ?;`
+// 	for _, userForums := range AllUserForums {
+// 		stmt = `SELECT comment, user_id
+// 		FROM forum_comments
+// 		WHERE forum_id = ? AND user_id != ?;`
 
-		rows, err = m.DB.Query(stmt, userForums.ID, userID)
-		if err != nil {
-			return nil, err
-		}
+// 		rows, err = m.DB.Query(stmt, userForums.ID, userID)
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-		defer rows.Close()
+// 		defer rows.Close()
 
-		for rows.Next() {
-			not := &Notification{}
+// 		for rows.Next() {
+// 			not := &Notification{}
 
-			var userIDTemp int
-			err := rows.Scan(&not.Body, &userIDTemp)
-			if err != nil {
-				return nil, err
-			}
+// 			var userIDTemp int
+// 			err := rows.Scan(&not.Body, &userIDTemp)
+// 			if err != nil {
+// 				return nil, err
+// 			}
 
-			not.UserCommented, err = m.GetUserByUserID(userIDTemp)
-			if err != nil {
-				return nil, err
-			}
+// 			not.UserCommented, err = m.GetUserByUserID(userIDTemp)
+// 			if err != nil {
+// 				return nil, err
+// 			}
 
-			not.UserID = userID
-			not.ForumID = userForums.ID
-			not.Status = 0 //commented: 0, liked: 1, disliked: -1
+// 			not.UserID = userID
+// 			not.ForumID = userForums.ID
+// 			not.Status = 0 //commented: 0, liked: 1, disliked: -1
 
-			allNot = append(allNot, not)
-		}
+// 			allNot = append(allNot, not)
+// 		}
 
-		stmt = `SELECT like_status, user_id
-		FROM forum_likes
-		WHERE forum_id = ? AND user_id != ?`
+// 		stmt = `SELECT like_status, user_id
+// 		FROM forum_likes
+// 		WHERE forum_id = ? AND user_id != ?`
 
-		rows, err = m.DB.Query(stmt, userForums.ID, userID)
-		if err != nil {
-			return nil, err
-		}
+// 		rows, err = m.DB.Query(stmt, userForums.ID, userID)
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-		defer rows.Close()
+// 		defer rows.Close()
 
-		for rows.Next() {
-			not := &Notification{}
+// 		for rows.Next() {
+// 			not := &Notification{}
 
-			var tempUserID int
-			err := rows.Scan(&not.Status, &tempUserID)
-			if err != nil {
-				return nil, err
-			}
+// 			var tempUserID int
+// 			err := rows.Scan(&not.Status, &tempUserID)
+// 			if err != nil {
+// 				return nil, err
+// 			}
 
-			not.UserCommented, err = m.GetUserByUserID(tempUserID)
-			if err != nil {
-				return nil, err
-			}
+// 			not.UserCommented, err = m.GetUserByUserID(tempUserID)
+// 			if err != nil {
+// 				return nil, err
+// 			}
 
-			if not.Status == 1 {
-				not.Body = "liked"
-			} else if not.Status == -1 {
-				not.Body = "disliked"
-			} else {
-				break
-			}
+// 			if not.Status == 1 {
+// 				not.Body = "liked"
+// 			} else if not.Status == -1 {
+// 				not.Body = "disliked"
+// 			} else {
+// 				break
+// 			}
 
-			not.UserID = userID
-			not.ForumID = userForums.ID
-			//commented: 1, liked: 2, disliked: 3
+// 			not.UserID = userID
+// 			not.ForumID = userForums.ID
+// 			//commented: 1, liked: 2, disliked: 3
 
-			allNot = append(allNot, not)
-		}
-	}
+// 			allNot = append(allNot, not)
+// 		}
+// 	}
 
-	stmt = `SELECT fl.like_status, fl.user_id, fc.forum_id
-		FROM forum_likes fl
-		INNER JOIN forum_comments fc ON fl.comment_id = fc.id
-		WHERE fc.user_id != fl.user_id AND fc.user_id = ?;`
+// 	stmt = `SELECT fl.like_status, fl.user_id, fc.forum_id
+// 		FROM forum_likes fl
+// 		INNER JOIN forum_comments fc ON fl.comment_id = fc.id
+// 		WHERE fc.user_id != fl.user_id AND fc.user_id = ?;`
 
-	rows, err = m.DB.Query(stmt, userID)
-	if err != nil {
-		return nil, err
-	}
+// 	rows, err = m.DB.Query(stmt, userID)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	defer rows.Close()
+// 	defer rows.Close()
 
-	for rows.Next() {
-		not := &Notification{}
+// 	for rows.Next() {
+// 		not := &Notification{}
 
-		var tempUserID int
-		err := rows.Scan(&not.Status, &tempUserID, &not.ForumID)
-		if err != nil {
-			return nil, err
-		}
+// 		var tempUserID int
+// 		err := rows.Scan(&not.Status, &tempUserID, &not.ForumID)
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-		not.UserCommented, err = m.GetUserByUserID(tempUserID)
-		if err != nil {
-			return nil, err
-		}
+// 		not.UserCommented, err = m.GetUserByUserID(tempUserID)
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-		if not.Status == 1 {
-			not.Body = "liked"
-		} else if not.Status == -1 {
-			not.Body = "disliked"
-		} else {
-			break
-		}
+// 		if not.Status == 1 {
+// 			not.Body = "liked"
+// 		} else if not.Status == -1 {
+// 			not.Body = "disliked"
+// 		} else {
+// 			break
+// 		}
 
-		not.UserID = userID
-		//commented: 1, liked: 2, disliked: 3
+// 		not.UserID = userID
+// 		//commented: 1, liked: 2, disliked: 3
 
-		allNot = append(allNot, not)
-	}
+// 		allNot = append(allNot, not)
+// 	}
 
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
+// 	if err = rows.Err(); err != nil {
+// 		return nil, err
+// 	}
 
-	return allNot, nil
-}
+// 	return allNot, nil
+// }
 
 func (m *ForumModel) ShowAllUserLikes(userID int) ([]*Forum, error) {
 	stmt := `SELECT f.id, f.title, f.content, f.tags, f.created, f.expires
@@ -776,7 +775,7 @@ func (m *ForumModel) ShowAllUserLikes(userID int) ([]*Forum, error) {
 		JOIN forum_likes fl ON fl.comment_id = fc.id 
 		WHERE fl.user_id = ?
 	) AS relevant_forums ON f.id = relevant_forums.forum_id
-	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now');`
+	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now') AND f.status = 1;`
 
 	rows, err := m.DB.Query(stmt, userID, userID)
 	if err != nil {
@@ -819,7 +818,7 @@ func containsAny(source []string, target []string) bool {
 func (m *ForumModel) GetUserIDFromForum(forumID int) (int, error) {
 	stmt := `SELECT user_id
 	FROM forums 
-	WHERE id = ?;`
+	WHERE id = ? AND status = 1;`
 
 	row := m.DB.QueryRow(stmt, forumID)
 
@@ -846,4 +845,60 @@ func (m *ForumModel) GetUserByUserID(userID int) (string, error) {
 	}
 
 	return user.Name, nil
+}
+
+func (m *ForumModel) GetUserByForumID(forumID int) (User, error) {
+	stmt := `SELECT user_id FROM forums WHERE id = ?`
+
+	row := m.DB.QueryRow(stmt, forumID)
+
+	var user User
+	err := row.Scan(&user.ID)
+	if err != nil {
+		return user, err
+	}
+
+	user.Name, err = m.GetUserByUserID(user.ID)
+	if err != nil {
+		return user, err
+	}
+
+	return user, nil
+}
+
+func (m *ForumModel) GetAllTags() ([]string, error) {
+	stmt := `SELECT tags FROM forum_tags;`
+
+	rows, err := m.DB.Query(stmt)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	tags := make([]string, 0)
+
+	for rows.Next() {
+		var tag string
+		err := rows.Scan(&tag)
+		if err != nil {
+			return nil, err
+		}
+
+		tags = append(tags, tag)
+	}
+
+	return tags, nil
+}
+
+func (m *ForumModel) ChangeForumStatus(forumID int, status int) error {
+	stmt := `UPDATE forums
+	SET status = ? WHERE id = ?`
+
+	_, err := m.DB.Exec(stmt, status, forumID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

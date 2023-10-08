@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -27,6 +28,7 @@ type forumCreateForm struct {
 	Tags      string
 	Expires   int
 	ImagePath string
+	AllTags   []string
 	validator.Validator
 }
 
@@ -34,6 +36,7 @@ type userSingupForm struct {
 	Name     string
 	Email    string
 	Password string
+	Role     int
 	validator.Validator
 }
 
@@ -58,7 +61,12 @@ type forumCommentForm struct {
 	validator.Validator
 }
 
-// Замените на свои данные OAuth 2.0
+type forumReportForm struct {
+	reportTypes   string
+	reportDetails string
+	validator.Validator
+}
+
 const (
 	clientID        = "30519126384-v31k4ahraui4a59kmev21ju6353ne17p.apps.googleusercontent.com"
 	clientGitID     = "d110450fd3d4bae1c7bb"
@@ -66,15 +74,48 @@ const (
 
 	clientSecret = "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"
 	redirectURI  = "https://localhost:4000/callback"
+
+	adminID = 1
+
+	guestRole     = 1
+	userRole      = 2
+	moderatorRole = 3
+	adminRole     = 4
+
+	visibleStatus   = 1
+	invisibleStatus = 0
 )
 
-// Данные о пользователе
 type UserInfo struct {
 	ID       string `json:"id"`
 	Email    string `json:"email"`
 	Name     string `json:"name"`
 	Login    string `json:"login"`
 	Password string
+}
+
+func (app *application) createAdmin() error {
+	// var err error
+
+	adminName := os.Getenv("ADMIN_NAME")
+	adminPassword := os.Getenv("ADMIN_PASSWORD")
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+
+	app.users.Insert(adminName, adminEmail, adminPassword, adminRole)
+	// var sqliteErr sqlite3.Error
+	// if errors.Is(err, models.ErrDuplicateEmail) || strings.Contains(sqliteErr.Error(), "UNIQUE constraint failed") {
+	// }
+
+	app.users.InsertTags("tag 1")
+	app.users.InsertTags("tag 2")
+	app.users.InsertTags("tag 3")
+
+	app.users.GetAdminUser()
+	// if errors.Is(err, models.ErrDuplicateEmail) || strings.Contains(sqliteErr.Error(), "UNIQUE constraint failed") {
+	// 	return nil
+	// }
+
+	return nil
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -209,11 +250,6 @@ func (app *application) forumAllUserComments(w http.ResponseWriter, r *http.Requ
 }
 
 func (app *application) userNotification(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/user/notification" {
-		app.notFound(w)
-		return
-	}
-
 	cookie, err := r.Cookie("session")
 	if err != nil {
 		app.serverError(w, err)
@@ -226,7 +262,18 @@ func (app *application) userNotification(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	notification, err := app.forums.ShowUserNotification(userID)
+	role, err := app.forums.GetRoleByUserID(userID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	if role != adminRole && role != moderatorRole {
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
+	}
+
+	notifications, err := app.forums.ShowUserNotification(role)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -234,9 +281,347 @@ func (app *application) userNotification(w http.ResponseWriter, r *http.Request)
 
 	data := app.newTemplateData(r)
 
-	data.Form = notification
+	data.Form = notifications
 
 	app.render(w, http.StatusOK, "notification.tmpl.html", data)
+}
+
+func (app *application) userNotificationRemove(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	adminID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	role, err := app.forums.GetRoleByUserID(adminID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	if role != adminRole && role != moderatorRole {
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
+	}
+
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	idStr := parts[4]
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	err = app.forums.RemoveUserNotification(id)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/user/notification", http.StatusSeeOther)
+}
+
+func (app *application) forumReportRemoveHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	adminID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	role, err := app.forums.GetRoleByUserID(adminID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	if role != adminRole {
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
+	}
+
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	idStr := parts[6]
+	getUserID, err := strconv.Atoi(idStr)
+	if err != nil || getUserID < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	idStr = parts[5]
+	forumID, err := strconv.Atoi(idStr)
+	if err != nil || forumID < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	idStr = parts[4]
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	err = app.forums.ChangeForumStatus(forumID, invisibleStatus)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.forums.AnswerFromAdmin(getUserID, "approved")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.forums.RemoveUserNotification(id)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/user/notification", http.StatusSeeOther)
+}
+
+func (app *application) userModerationDone(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	idStr := parts[4]
+	userID, err := strconv.Atoi(idStr)
+	if err != nil || userID < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	idStr = parts[3]
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	err = app.forums.ChangeUserRole(userID, moderatorRole)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.forums.RemoveUserNotification(id)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/user/notification", http.StatusSeeOther)
+}
+
+func (app *application) moderDenoteHandler(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	idStr := parts[3]
+	moderID, err := strconv.Atoi(idStr)
+	if err != nil || moderID < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	idStr = parts[4]
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	err = app.forums.ChangeUserRole(moderID, userRole)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.forums.RemoveUserNotification(id)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/user/notification", http.StatusSeeOther)
+}
+
+func (app *application) forumAcceptHandler(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	idStr := parts[3]
+	notID, err := strconv.Atoi(idStr)
+	if err != nil || notID < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	idStr = parts[4]
+	fourmID, err := strconv.Atoi(idStr)
+	if err != nil || fourmID < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	err = app.forums.ChangeForumStatus(fourmID, visibleStatus)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.forums.RemoveUserNotification(notID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/user/notification", http.StatusSeeOther)
+}
+
+func (app *application) addTagsHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		app.addTagsGet(w, r)
+	case http.MethodPost:
+		app.addTagsPost(w, r)
+	default:
+		w.Header().Set("Allow", http.MethodPost+", "+http.MethodGet)
+		app.clientError(w, http.StatusMethodNotAllowed)
+	}
+}
+
+func (app *application) addTagsGet(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	app.render(w, http.StatusOK, "addTags.tmpl.html", data)
+}
+
+func (app *application) addTagsPost(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	add := r.FormValue("add_tag")
+	remove := r.FormValue("remove_tag")
+	tagsText := r.FormValue("tags_text")
+
+	tags := strings.Split(tagsText, ", ")
+
+	if add != "" && remove != "" {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	if add == "1" {
+		for _, tag := range tags {
+			err = app.users.InsertTags(tag)
+		}
+	} else if remove == "-1" {
+		for _, tag := range tags {
+			err = app.users.RemoveTag(tag)
+		}
+	} else {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (app *application) forumReportHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		app.ForumReportGet(w, r)
+	case http.MethodPost:
+		app.ForumReportPost(w, r)
+	default:
+		w.Header().Set("Allow", http.MethodPost+", "+http.MethodGet)
+		app.clientError(w, http.StatusMethodNotAllowed)
+	}
+}
+
+func (app *application) ForumReportGet(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	app.render(w, http.StatusOK, "report.tmpl.html", data)
+}
+
+func (app *application) ForumReportPost(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	types := r.PostForm["reportType"]
+
+	form := forumReportForm{
+		reportTypes:   strings.Join(types, ", "),
+		reportDetails: r.PostForm.Get("reportDetails"),
+	}
+
+	form.CheckField(validator.MaxChars(form.reportTypes, 200), "tags", "This field cannot be more than 200 characters long")
+
+	if !form.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "report.tmpl.html", data)
+		return
+	}
+
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	idStr := parts[3]
+	forumID, err := strconv.Atoi(idStr)
+	if err != nil || forumID < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	moderID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.forums.ReportForum(forumID, moderID, form.reportTypes+" "+form.reportDetails)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/forum/view/%d", forumID), http.StatusSeeOther)
 }
 
 func (app *application) forumCategory(w http.ResponseWriter, r *http.Request) {
@@ -271,7 +656,6 @@ func (app *application) forumCategory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	// tagsStr := strings.Join(tags, ", ")
 
 	data := app.newTemplateData(r)
 
@@ -311,6 +695,10 @@ func (app *application) forumView(w http.ResponseWriter, r *http.Request) {
 
 	userFromForum, err := app.forums.GetUserIDFromForum(id)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			app.notFound(w)
+			return
+		}
 		app.serverError(w, err)
 		return
 	}
@@ -329,7 +717,7 @@ func (app *application) forumView(w http.ResponseWriter, r *http.Request) {
 
 	data := app.newTemplateData(r)
 
-	data.Forum = forum
+	data.Form = forum
 
 	app.render(w, http.StatusOK, "view.tmpl.html", data)
 }
@@ -349,9 +737,18 @@ func (app *application) handleForumCreate(w http.ResponseWriter, r *http.Request
 func (app *application) ForumCreateGet(w http.ResponseWriter, r *http.Request) {
 	data := app.newTemplateData(r)
 
-	data.Form = forumCreateForm{
-		Expires: 365,
+	tags, err := app.forums.GetAllTags()
+	if err != nil {
+		app.serverError(w, err)
+		return
 	}
+
+	form := forumCreateForm{
+		Expires: 365,
+		AllTags: tags,
+	}
+
+	data.Form = form
 
 	app.render(w, http.StatusOK, "create.tmpl.html", data)
 }
@@ -364,7 +761,7 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	maxFileSize := int64(20 * 1024 * 1024)
-	err = r.ParseMultipartForm(maxFileSize) //check for size (20mb)
+	err = r.ParseMultipartForm(maxFileSize) // check for size (20mb)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -440,6 +837,7 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 		app.serverError(w, err)
 		return
 	}
+
 	userID, _, err := app.sessions.GetSession(cookie.Value)
 	if err != nil {
 		app.serverError(w, err)
@@ -452,7 +850,13 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/forum/view/%d", id), http.StatusSeeOther)
+	err = app.forums.AskForNewForum(id, userID, form.Title+"\n"+form.Content)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (app *application) handleForumEdit(w http.ResponseWriter, r *http.Request) {
@@ -546,7 +950,7 @@ func (app *application) ForumEditPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	maxFileSize := int64(20 * 1024 * 1024)
-	err = r.ParseMultipartForm(maxFileSize) //check for size (20mb)
+	err = r.ParseMultipartForm(maxFileSize) // check for size (20mb)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -667,6 +1071,7 @@ func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
 		Name:     r.PostForm.Get("name"),
 		Email:    r.PostForm.Get("email"),
 		Password: r.PostForm.Get("password"),
+		Role:     userRole,
 	}
 
 	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
@@ -682,7 +1087,7 @@ func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = app.users.Insert(form.Name, form.Email, form.Password)
+	err = app.users.Insert(form.Name, form.Email, form.Password, form.Role)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
 			form.AddFieldError("email", "Email or name address is already in use")
@@ -742,10 +1147,8 @@ func (app *application) handleGoogleAuth(w http.ResponseWriter, r *http.Request)
 }
 
 func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
-	// Получение кода авторизации из запроса
 	code := r.URL.Query().Get("code")
 
-	// Обмен кода авторизации на токен доступа
 	tokenURL := "https://accounts.google.com/o/oauth2/token"
 	data := fmt.Sprintf("code=%s&client_id=%s&client_secret=%s&redirect_uri=%s&grant_type=authorization_code", code, clientID, clientSecret, redirectURI)
 
@@ -764,7 +1167,6 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 	}
 	accessToken := tokenResponse["access_token"].(string)
 
-	// Получение данных о пользователе с использованием токена доступа
 	userInfoURL := "https://www.googleapis.com/oauth2/v2/userinfo"
 	req, _ := http.NewRequest("GET", userInfoURL, nil)
 	req.Header.Add("Authorization", "Bearer "+accessToken)
@@ -782,7 +1184,8 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	form.Password, _ = generateRandomPassword(8) //NOTATION!!!!!
+	form.Role = userRole
+	form.Password, _ = generateRandomPassword(8) // NOTATION!!!!!
 
 	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
 	form.CheckField(validator.NotBlank(form.Email), "email", "This field cannot be blank")
@@ -797,7 +1200,7 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	err = app.users.Insert(form.Name, form.Email, form.Password)
+	err = app.users.Insert(form.Name, form.Email, form.Password, form.Role)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
 			userID, _ := app.users.Authenticate(form.Email, form.Password)
@@ -820,7 +1223,6 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		if errors.Is(err, models.ErrInvalidCredentials) {
 			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
-
 		} else {
 			app.serverError(w, err)
 		}
@@ -847,19 +1249,19 @@ func generateRandomPassword(length int) (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
-// Greate GIT HUB AUTOTEFICATION
 func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, githubData string) {
 	if githubData == "" {
 		app.serverError(w, errors.New("github.com: unauthorized"))
 		return
 	}
 
-	// Set return type JSON
 	w.Header().Set("Content-type", "application/json")
 
 	form := userSingupForm{}
 	json.Unmarshal([]byte(githubData), &form)
-	form.Password, _ = generateRandomPassword(8) //NOTATION!!!!!
+
+	form.Role = userRole
+	form.Password, _ = generateRandomPassword(8) // NOTATION!!!!!
 
 	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
 	form.CheckField(validator.NotBlank(form.Email), "email", "This field cannot be blank")
@@ -874,7 +1276,7 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	err := app.users.Insert(form.Name, form.Email, form.Password)
+	err := app.users.Insert(form.Name, form.Email, form.Password, 2)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
 			userID, err := app.users.Authenticate(form.Email, form.Password)
@@ -925,7 +1327,6 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 }
 
 func (app *application) gitHubLoginHandler(w http.ResponseWriter, r *http.Request) {
-	// Create the dynamic redirect URL for login
 	redirectURL := fmt.Sprintf(
 		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s",
 		clientGitID,
@@ -940,8 +1341,8 @@ func (app *application) gitHubCallbackHandler(w http.ResponseWriter, r *http.Req
 	gitHubAccessToken := app.getGitHubAccessToken(code)
 	gitHubData := getGitHubData(gitHubAccessToken)
 	app.loggedinHandler(w, r, gitHubData)
-
 }
+
 func (app *application) getGitHubAccessToken(code string) string {
 	requestBodyMap := map[string]string{
 		"client_id":     clientGitID,
@@ -963,34 +1364,27 @@ func (app *application) getGitHubAccessToken(code string) string {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	// Get the response
 	resp, resperr := http.DefaultClient.Do(req)
 
 	if resperr != nil {
 		log.Panic("Request failed by get the response")
 	}
 
-	// Response body converted to stringified JSON
 	respbody, _ := ioutil.ReadAll(resp.Body)
 
-	// Represents the response received from Github
 	type githubAccessTokenResponse struct {
 		AccessToken string `json:"access_token"`
 		TokenType   string `json:"token_type"`
 		Scope       string `json:"scope"`
 	}
 
-	// Convert stringified JSON to a struct object of type githubAccessTokenResponse
 	var ghresp githubAccessTokenResponse
 	json.Unmarshal(respbody, &ghresp)
 
-	// Return the access token (as the rest of the
-	// details are relatively unnecessary for us)
 	return ghresp.AccessToken
-
 }
+
 func getGitHubData(accessToken string) string {
-	// Get request to a set URL
 	req, reqerr := http.NewRequest(
 		"GET",
 		"https://api.github.com/user",
@@ -1000,20 +1394,16 @@ func getGitHubData(accessToken string) string {
 		log.Panic("API Request creation failed")
 	}
 
-	// Set the Authorization header before sending the request
 	authorizationHeaderValue := fmt.Sprintf("token %s", accessToken)
 	req.Header.Set("Authorization", authorizationHeaderValue)
 
-	// Make the request
 	resp, resperr := http.DefaultClient.Do(req)
 	if resperr != nil {
 		log.Panic("Request failed by Make the request")
 	}
 
-	// Read the response as a byte slice
 	respbody, _ := ioutil.ReadAll(resp.Body)
 
-	// Convert byte slice to string and return
 	return string(respbody)
 }
 
@@ -1101,6 +1491,28 @@ func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+func (app *application) moderAskHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	userID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.forums.AskForModeration(userID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
 func (app *application) isAuthenticated(r *http.Request) bool {
 	cookie, err := r.Cookie("session")
 	if err != nil {
@@ -1115,6 +1527,22 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 	return time.Now().Before(expiry)
 }
 
+func (app *application) getRole(r *http.Request) int {
+	if !app.isAuthenticated(r) {
+		return guestRole
+	}
+
+	cookie, _ := r.Cookie("session")
+	user_id, _, _ := app.sessions.GetSession(cookie.Value)
+
+	role, err := app.users.GetUserRole(user_id)
+	if err != nil {
+		return -1
+	}
+
+	return role
+}
+
 func (app *application) isOwnForum(userID int, r *http.Request) bool {
 	cookie, err := r.Cookie("session")
 	if err != nil {
@@ -1126,7 +1554,7 @@ func (app *application) isOwnForum(userID int, r *http.Request) bool {
 		return false
 	}
 
-	return time.Now().Before(expiry) && userID == getUserID
+	return time.Now().Before(expiry) && (userID == getUserID || getUserID == adminID)
 }
 
 func (app *application) forumIsLike(w http.ResponseWriter, r *http.Request) {
@@ -1329,6 +1757,26 @@ func (app *application) ForumCommentPost(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// userIDfromForum, err := app.forums.GetUserIDFromForum(form.ForumID)
+	// if err != nil {
+	// 	app.serverError(w, err)
+	// 	return
+	// }
+
+	// if userIDfromForum != form.UserID {
+	// 	user_name, err := app.forums.GetUserByUserIDInComment(form.UserID)
+	// 	if err != nil {
+	// 		app.serverError(w, err)
+	// 		return
+	// 	}
+
+	// 	err = app.forumComment.CommentPostNotification(form.ForumID, userIDfromForum, form.Comment, user_name)
+	// 	if err != nil {
+	// 		app.serverError(w, err)
+	// 		return
+	// 	}
+	// }
+
 	http.Redirect(w, r, fmt.Sprintf("/forum/view/%d", id), http.StatusSeeOther)
 }
 
@@ -1477,16 +1925,12 @@ func (app *application) ForumRemoveCommentPost(w http.ResponseWriter, r *http.Re
 	idStr := parts[4]
 	forumID, err := strconv.Atoi(idStr)
 	if err != nil || forumID < 1 {
-		fmt.Println(idStr)
-		http.NotFound(w, r)
 		return
 	}
 
 	idStr = parts[5]
 	commentID, err := strconv.Atoi(idStr)
 	if err != nil || commentID < 1 {
-		fmt.Println(idStr)
-		http.NotFound(w, r)
 		return
 	}
 
@@ -1496,21 +1940,11 @@ func (app *application) ForumRemoveCommentPost(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	var userID int
+	isOwn := app.isOwnForum(userFromForum, r)
 
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		userID = 0
-	} else {
-		userID, _, err = app.sessions.GetSession(cookie.Value)
-		if err != nil {
-			app.serverError(w, err)
-			return
-		}
-	}
-
-	if userID != userFromForum {
-		app.clientError(w, http.StatusBadRequest)
+	if !isOwn {
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
 	}
 
 	err = app.forumComment.RemoveCommentPost(commentID)

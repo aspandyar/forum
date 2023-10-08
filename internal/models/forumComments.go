@@ -27,6 +27,18 @@ func (m *ForumCommentModel) CommentPost(forumID, userID int, comment string) (in
 	return forumID, nil
 }
 
+func (m *ForumCommentModel) CommentPostNotification(forumID, userID int, comment, userName string) error {
+	stmt := `INSERT INTO forum_notifications (user_name, body, status, forum_link, user_id) 
+	VALUES (?, ?, ?, ?, ?);`
+
+	_, err := m.DB.Exec(stmt, userName, comment, "commented", forumID, userID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *ForumCommentModel) EditCommentPost(forumID, userID int, comment string, commentID int) error {
 	stmt := `UPDATE forum_comments 
 	SET forum_id = ?, user_id = ?, comment = ?
@@ -38,6 +50,18 @@ func (m *ForumCommentModel) EditCommentPost(forumID, userID int, comment string,
 	}
 	return nil
 }
+
+// func (m *ForumCommentModel) EditCommentPostNotification(body string, notID int) error {
+// 	stmt := `UPDATE forum_notifications
+// 	SET body = ?
+// 	WHERE id = ?`
+
+// 	_, err := m.DB.Exec(stmt, body, notID)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// } TODO: edit comment should eddit also notification... but how to get id from notification???
 
 func (m *ForumCommentModel) RemoveCommentPost(commentID int) error {
 	stmt := `DELETE FROM forum_comments
@@ -96,4 +120,19 @@ func (m *ForumModel) ShowAllUserComments(userID int) ([]*ForumComment, error) {
 	}
 
 	return forums, nil
+}
+
+func (m *ForumModel) GetUserByUserIDInComment(userID int) (string, error) {
+	stmt := `SELECT name, email FROM users WHERE id = ?`
+
+	row := m.DB.QueryRow(stmt, userID)
+
+	var user User
+
+	err := row.Scan(&user.Name, &user.Email)
+	if err != nil {
+		return user.Name, err
+	}
+
+	return user.Name, nil
 }

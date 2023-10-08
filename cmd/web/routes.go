@@ -27,6 +27,24 @@ func (app *application) routes() http.Handler {
 
 	mux.HandleFunc("/user/login", app.userLogin)
 
+	userLogout := http.HandlerFunc(app.userLogoutPost)
+	mux.Handle("/user/logout", app.requireAuthentication(userLogout))
+
+	moderAsk := http.HandlerFunc(app.moderAskHandler)
+	mux.Handle("/moderation/ask", app.requireAuthentication(moderAsk))
+
+	moderAccept := http.HandlerFunc(app.userModerationDone)
+	mux.Handle("/moderation/accept/", app.requireAuthentication(moderAccept))
+
+	forumAccept := http.HandlerFunc(app.forumAcceptHandler)
+	mux.Handle("/moderation/forum/", app.requireAuthentication(forumAccept))
+
+	forumReport := http.HandlerFunc(app.forumReportHandler)
+	mux.Handle("/moderation/report/", app.requireAuthentication(forumReport))
+
+	moderDenote := http.HandlerFunc(app.moderDenoteHandler)
+	mux.Handle("/moderation/denote/", app.requireAuthentication(moderDenote))
+
 	forumCreate := http.HandlerFunc(app.handleForumCreate)
 	mux.Handle("/forum/create", app.requireAuthentication(forumCreate))
 
@@ -35,9 +53,6 @@ func (app *application) routes() http.Handler {
 
 	forumRemove := http.HandlerFunc(app.handleForumRemove)
 	mux.Handle("/forum/remove/", app.requireAuthentication(forumRemove))
-
-	userLogout := http.HandlerFunc(app.userLogoutPost)
-	mux.Handle("/user/logout", app.requireAuthentication(userLogout))
 
 	forumLikeStatus := http.HandlerFunc(app.forumIsLike)
 	mux.Handle("/forum/like/", app.requireAuthentication(forumLikeStatus))
@@ -65,6 +80,15 @@ func (app *application) routes() http.Handler {
 
 	userNotificationSection := http.HandlerFunc(app.userNotification)
 	mux.Handle("/user/notification", app.requireAuthentication(userNotificationSection))
+
+	addTags := http.HandlerFunc(app.addTagsHandler)
+	mux.Handle("/admin/addTags", app.requireAuthentication(addTags))
+
+	userNotificationSectionRemove := http.HandlerFunc(app.userNotificationRemove)
+	mux.Handle("/user/notification/remove/", app.requireAuthentication(userNotificationSectionRemove))
+
+	forumReportRemove := http.HandlerFunc(app.forumReportRemoveHandler)
+	mux.Handle("/user/report/remove/", app.requireAuthentication(forumReportRemove))
 
 	return app.recoverPanic(app.logRequest(secureHeaders(rateLimitMiddleware(mux))))
 }

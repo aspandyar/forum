@@ -56,7 +56,6 @@ func main() {
 		errorLog.Fatal(err)
 	}
 	defer db.Close()
-
 	readDB(initSqlFileName, db)
 
 	templateCache, err := newTemplateCache()
@@ -73,6 +72,11 @@ func main() {
 		forumLike:     &models.ForumLikesModel{DB: db},
 		forumComment:  &models.ForumCommentModel{DB: db},
 		tempalteCache: templateCache,
+	}
+
+	err = app.createAdmin()
+	if err != nil {
+		errorLog.Fatal(err)
 	}
 
 	tlsConfig := &tls.Config{
@@ -122,10 +126,8 @@ func readDB(path string, db *sql.DB) {
 		log.Fatal(err)
 	}
 
-	// Split the script into individual statements
 	statements := strings.Split(string(sqlScript), ";")
 
-	// Execute each SQL statement
 	for _, stmt := range statements {
 		trimmedStmt := strings.TrimSpace(stmt)
 		if len(trimmedStmt) > 0 {

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS forums (
     created DATETIME NOT NULL,
     expires DATETIME NOT NULL,
     image_path TEXT,
+    status INT NOT NULL DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
@@ -16,6 +17,13 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) NOT NULL UNIQUE,
     hashed_password CHAR(60) NOT NULL,
     created DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS roles (
+    if INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    role INTEGER NOT NULL,
+    user_id INTEGER NOT NULL UNIQUE,
+    FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -43,3 +51,18 @@ CREATE TABLE IF NOT EXISTS forum_comments (
     FOREIGN KEY (forum_id) REFERENCES forums (id),
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
+
+CREATE TABLE IF NOT EXISTS forum_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_name TEXT NOT NULL,
+    body TEXT NOT NULL,
+    status TEXT NOT NULL,
+    forum_link TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    user_not_id INT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS forum_tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tags TEXT UNIQUE
+)

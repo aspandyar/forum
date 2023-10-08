@@ -1,116 +1,125 @@
-{{define "title"}}Forum {{with .Forum}}#{{.ID}}{{end}}{{end}}
+{{define "title"}}Forum {{with .Form}}#{{.ID}}{{end}}{{end}}
 
 {{define "main"}}
-    {{with .Forum}}
-    <article class='forum'>
-        <header class='forum-header'>
-            <h1>{{.Title}}</h1>
-            <span class='forum-id'>#{{.ID}}</span>
-            <ul class='tags'>
-                {{range .TagsOutput}}
-                    <li>{{.}}</li>
-                {{end}}
-            </ul>
-            {{if .IsOwnForum}}
-            <a href="/forum/edit/{{.ID}}">edit</a>
-            <a href="/forum/remove/{{.ID}}">remove</a>
+<article class='forum'>
+    <header class='forum-header'>
+        <h1>{{.Form.Title}}</h1>
+        <span class='forum-id'>#{{.Form.ID}}</span>
+        <ul class='tags'>
+            {{range .Form.TagsOutput}}
+            <li>{{.}}</li>
             {{end}}
-        </header>
-        <div class='special-box'>
-            <pre><code class='forum-content'>{{.Content}}</code></pre>
-        </div>
-        <div>
-            <img id="image" onclick="window.open('{{.ImagePath}}','targetWindow', 'toolbar=no, location=no, status=no, menubar=no, scrollbars=yes, resizable=yes, width=1090px, height=550px, top=25px left=120px'); return false;" src="{{.ImagePath}}" alt="Image">
-        </div><br>
-        <div>
-            {{if .ImagePath}}
-                <button type="button" onclick="show()" id="btnID">
-                    Show Image
-                </button>
+        </ul>
+        {{if .Form.IsOwnForum}}
+        <a href="/forum/edit/{{.Form.ID}}">edit</a>
+        <a href="/forum/remove/{{.Form.ID}}">remove</a>
+        {{end}}
+    </header>
+    <div class='special-box'>
+        <pre><code class='forum-content'>{{.Form.Content}}</code></pre>
+    </div>
+    <div>
+        <img id="image"
+            onclick="window.open('{{.Form.ImagePath}}','targetWindow', 'toolbar=no, location=no, status=no, menubar=no, scrollbars=yes, resizable=yes, width=1090px, height=550px, top=25px left=120px'); return false;"
+            src="{{.Form.ImagePath}}" alt="Image">
+    </div><br>
+    {{if eq .Role 3}}
+    <a href="/moderation/report/{{.Form.ID}}">report</a>
+    {{end}}
+    <div>
+        {{if .Form.ImagePath}}
+        <button type="button" onclick="show()" id="btnID">
+            Show Image
+        </button>
+        {{end}}
+    </div><br>
+    {{with .Form}}
+    <section class='special-box metadata'>
+        <time class='forum-created'>Created: {{humanDate .Created}}</time>
+        <time class='forum-expires'>Expires: {{humanDate .Expires}}</time>
+    </section>
+    <section class='reactions'>
+        <form method="post" action="/forum/like/{{.ID}}">
+            {{if .Reacted}}
+            {{if .Liked}}
+            <button class="like-button liked" type="submit" name="button" value="like">like</button>
+            <span class="likes">{{.LikesCount}}</span>
+            <button class="dislike-button not-disliked" type="submit" name="button" value="dislike">dislike</button>
+            <span class="dislikes">{{.DislikesCount}}</span>
+            {{else}}
+            <button class="like-button not-liked" type="submit" name="button" value="like">like</button>
+            <span class="likes">{{.LikesCount}}</span>
+            <button class="dislike-button disliked" type="submit" name="button" value="dislike">dislike</button>
+            <span class="dislikes">{{.DislikesCount}}</span>
             {{end}}
-        </div><br>
-        <section class='special-box metadata'>
-            <time class='forum-created'>Created: {{humanDate .Created}}</time>
-            <time class='forum-expires'>Expires: {{humanDate .Expires}}</time>
-        </section>
-        <section class='reactions'>
-            <form method="post" action="/forum/like/{{.ID}}">
-                {{if .Reacted}}
-                    {{if .Liked}}
-                        <button class="like-button liked" type="submit" name="button" value="like">like</button>
-                        <span class="likes">{{.LikesCount}}</span>
-                        <button class="dislike-button not-disliked" type="submit" name="button" value="dislike">dislike</button>
-                        <span class="dislikes">{{.DislikesCount}}</span>
-                    {{else}}
-                        <button class="like-button not-liked" type="submit" name="button" value="like">like</button>
-                        <span class="likes">{{.LikesCount}}</span>
-                        <button class="dislike-button disliked" type="submit" name="button" value="dislike">dislike</button>
-                        <span class="dislikes">{{.DislikesCount}}</span>
-                    {{end}}
-                {{else}}
-                    <button class="like-button not-liked" type="submit" name="button" value="like">like</button>
-                    <span class="likes">{{.LikesCount}}</span>
-                    <button class="dislike-button not-disliked" type="submit" name="button" value="dislike">dislike</button>
-                    <span class="dislikes">{{.DislikesCount}}</span>
-                {{end}}
-            </form>
-        </section>
-    </article>
-    {{ if eq (.EditComment.CommentID) 0 }}
-        <form method="post" action="/forum/comment/{{.ID}}">
-            <label for="comment">Enter Text:</label>
-            <input type="text" id="comment" name="comment" required>
-            <button type="submit">Submit</button>
+            {{else}}
+            <button class="like-button not-liked" type="submit" name="button" value="like">like</button>
+            <span class="likes">{{.LikesCount}}</span>
+            <button class="dislike-button not-disliked" type="submit" name="button" value="dislike">dislike</button>
+            <span class="dislikes">{{.DislikesCount}}</span>
+            {{end}}
         </form>
-    {{ else }}
-        <form method="post">
-            <label for="comment">Enter Text:</label>
-            <input type="text" id="comment" name="comment" value="{{ .EditComment.Comment }}" required>
-            <button type="submit">Submit</button>
-        </form>
-    {{ end }}
-    <table class='comments'>
-        <thead>
-            <tr>
-                <th>Comment</th>
-                <th>User</th>
-                <th>Reaction</th>
-            </tr>
-        </thead>
-        <tbody id="comment-table-body">
-            {{range .Comment}}
-            <form method="post" action="/forum/likeComment/{{.CommentID}}">
+    </section>
+    {{end}}
+</article>
+{{with .Form}}
+{{ if eq (.EditComment.CommentID) 0 }}
+<form method="post" action="/forum/comment/{{.ID}}">
+    <label for="comment">Enter Text:</label>
+    <input type="text" id="comment" name="comment" required>
+    <button type="submit">Submit</button>
+</form>
+{{ else }}
+<form method="post">
+    <label for="comment">Enter Text:</label>
+    <input type="text" id="comment" name="comment" value="{{ .EditComment.Comment }}" required>
+    <button type="submit">Submit</button>
+</form>
+{{ end }}
+<table class='comments'>
+    <thead>
+        <tr>
+            <th>Comment</th>
+            <th>User</th>
+            <th>Reaction</th>
+        </tr>
+    </thead>
+    <tbody id="comment-table-body">
+        {{range .Comment}}
+        <form method="post" action="/forum/likeComment/{{.CommentID}}">
             <tr>
                 <td class='comment-text'>{{.Comment}}</td>
                 <td>{{.User}}</td>
                 <td class='comment-reactions'>
                     {{if .Reacted}}
-                        {{if .Liked}}
-                        <button class="like-button liked" type="submit" name="button" value="like">like</button>
-                            <span class="likes">{{.LikesCount}}</span>
-                            <button class="dislike-button not-disliked" type="submit" name="button" value="dislike">dislike</button>
-                            <span class="dislikes">{{.DislikesCount}}</span>
-                        {{else}}
-                            <button class="like-button not-liked" type="submit" name="button" value="like">like</button>
-                            <span class="likes">{{.LikesCount}}</span>
-                            <button class="dislike-button disliked" type="submit" name="button" value="dislike">dislike</button>
-                            <span class="dislikes">{{.DislikesCount}}</span>
-                        {{end}}
+                    {{if .Liked}}
+                    <button class="like-button liked" type="submit" name="button" value="like">like</button>
+                    <span class="likes">{{.LikesCount}}</span>
+                    <button class="dislike-button not-disliked" type="submit" name="button"
+                        value="dislike">dislike</button>
+                    <span class="dislikes">{{.DislikesCount}}</span>
                     {{else}}
-                        <button class="like-button not-liked" type="submit" name="button" value="like">like</button>
-                        <span class="likes">{{.LikesCount}}</span>
-                        <button class="dislike-button not-disliked" type="submit" name="button" value="dislike">dislike</button>
-                        <span class="dislikes">{{.DislikesCount}}</span>
+                    <button class="like-button not-liked" type="submit" name="button" value="like">like</button>
+                    <span class="likes">{{.LikesCount}}</span>
+                    <button class="dislike-button disliked" type="submit" name="button" value="dislike">dislike</button>
+                    <span class="dislikes">{{.DislikesCount}}</span>
+                    {{end}}
+                    {{else}}
+                    <button class="like-button not-liked" type="submit" name="button" value="like">like</button>
+                    <span class="likes">{{.LikesCount}}</span>
+                    <button class="dislike-button not-disliked" type="submit" name="button"
+                        value="dislike">dislike</button>
+                    <span class="dislikes">{{.DislikesCount}}</span>
                     {{end}}
                     {{if .IsOwnComment}}
-                        <a href="/forum/comment/edit/{{.ForumID}}/{{.CommentID}}">edit</a>
-                        <a href="/forum/comment/remove/{{.ForumID}}/{{.CommentID}}">remove</a>
+                    <a href="/forum/comment/edit/{{.ForumID}}/{{.CommentID}}">edit</a>
+                    <a href="/forum/comment/remove/{{.ForumID}}/{{.CommentID}}">remove</a>
                     {{end}}
                 </td>
             </tr>
-            </form>
-            {{end}}
-        </tbody>
-    </table>
-    {{end}}
+        </form>
+        {{end}}
+    </tbody>
+</table>
+{{end}}
 {{end}}

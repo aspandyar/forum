@@ -22,7 +22,7 @@ type UserModel struct {
 	DB *sql.DB
 }
 
-func (m *UserModel) Insert(name, email, password string) error {
+func (m *UserModel) Insert(name, email, password string, role int) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	if err != nil {
 		return err
@@ -31,7 +31,7 @@ func (m *UserModel) Insert(name, email, password string) error {
 	stmt := `INSERT INTO users (name, email, hashed_password, created) 
 	VALUES (?, ?, ?, strftime('%Y-%m-%d %H:%M:%S', 'now'));`
 
-	_, err = m.DB.Exec(stmt, name, email, hashedPassword)
+	result, err := m.DB.Exec(stmt, name, email, hashedPassword)
 	if err != nil {
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) {
@@ -39,6 +39,41 @@ func (m *UserModel) Insert(name, email, password string) error {
 				return ErrDuplicateEmail
 			}
 		}
+		return err
+	}
+
+	user_id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	stmt = `INSERT INTO roles (role, user_id)
+	VALUES (?, ?);`
+	_, err = m.DB.Exec(stmt, role, user_id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *UserModel) InsertTags(tag string) error {
+	stmt := `INSERT INTO forum_tags (tags)
+	VALUES (?);`
+
+	_, err := m.DB.Exec(stmt, tag)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *UserModel) RemoveTag(tag string) error {
+	stmt := `DELETE FROM forum_tags WHERE tags = ?;`
+
+	_, err := m.DB.Exec(stmt, tag)
+	if err != nil {
 		return err
 	}
 
@@ -72,6 +107,28 @@ func (m *UserModel) Authenticate(email, password string) (int, error) {
 	return id, nil
 }
 
-func (m *UserModel) Exists(id int) (bool, error) {
-	return false, nil
+func (m *UserModel) GetUserRole(user_id int) (int, error) {
+	var role int
+	stmt := `SELECT role FROM roles
+	WHERE user_id = ?`
+
+	row := m.DB.QueryRow(stmt, user_id)
+
+	err := row.Scan(&role)
+	if err != nil {
+		return -1, err
+	}
+
+	return role, nil
+}
+
+func (m *UserModel) GetAdminUser() error {
+	stmt := `INSERT INTO roles (role, user_id) VALUES (4, 1);`
+
+	_, err := m.DB.Exec(stmt)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
