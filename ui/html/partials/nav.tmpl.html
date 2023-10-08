@@ -16,14 +16,14 @@
     </div>
     <div class="auth-section">
         {{if .IsAuthenticated}}
-        {{if eq .Role 2}}
-        <form action="/moderation/ask" method="POST">
-            <button>Ask for moder</button>
-        </form>
-        {{end}}
         <form action="/user/logout" method="POST">
             <button>Logout</button>
+        </form><br>
+        {{if eq .Role 2}}
+        <form action="/moderation/ask" method="POST">
+            <button>Ask for moder</button> 
         </form>
+        {{end}}
         {{else}}
         <a href="/user/signup">Signup</a>
         <a href="/user/login">Login</a>
