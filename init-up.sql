@@ -18,6 +18,15 @@ CREATE TABLE IF NOT EXISTS users (
     created DATETIME NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS roles (
+    if INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    role INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+);
+
+INSERT INTO roles (role, user_id) VALUES (4, 1);
+
 CREATE TABLE IF NOT EXISTS sessions (
     token CHAR(43) PRIMARY KEY,
     user_id INTEGER NOT NULL,

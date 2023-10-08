@@ -51,6 +51,7 @@ func (app *application) newTemplateData(r *http.Request) *templateData {
 		CurrentYear:     time.Now().Year(),
 		Flash:           "",
 		IsAuthenticated: app.isAuthenticated(r),
+		Role:            app.getRole(r),
 	}
 }
 

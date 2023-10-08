@@ -34,6 +34,7 @@ type userSingupForm struct {
 	Name     string
 	Email    string
 	Password string
+	Role     int
 	validator.Validator
 }
 
@@ -66,6 +67,11 @@ const (
 
 	clientSecret = "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"
 	redirectURI  = "https://localhost:4000/callback"
+
+	guestRole     = 1
+	userRole      = 2
+	ModeratorRole = 3
+	AdminRole     = 4
 )
 
 // Данные о пользователе
@@ -75,6 +81,17 @@ type UserInfo struct {
 	Name     string `json:"name"`
 	Login    string `json:"login"`
 	Password string
+}
+
+func (app *application) createAdmin() error {
+	var err error
+
+	adminName := os.Getenv("ADMIN_NAME")
+	adminPassword := os.Getenv("ADMIN_PASSWORD")
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+
+	err = app.users.Insert(adminName, adminEmail, adminPassword, AdminRole)
+	return err
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -383,7 +400,7 @@ func (app *application) ForumCreatePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	maxFileSize := int64(20 * 1024 * 1024)
-	err = r.ParseMultipartForm(maxFileSize) //check for size (20mb)
+	err = r.ParseMultipartForm(maxFileSize) // check for size (20mb)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -565,7 +582,7 @@ func (app *application) ForumEditPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	maxFileSize := int64(20 * 1024 * 1024)
-	err = r.ParseMultipartForm(maxFileSize) //check for size (20mb)
+	err = r.ParseMultipartForm(maxFileSize) // check for size (20mb)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -686,6 +703,7 @@ func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
 		Name:     r.PostForm.Get("name"),
 		Email:    r.PostForm.Get("email"),
 		Password: r.PostForm.Get("password"),
+		Role:     userRole,
 	}
 
 	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
@@ -701,7 +719,7 @@ func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = app.users.Insert(form.Name, form.Email, form.Password)
+	err = app.users.Insert(form.Name, form.Email, form.Password, form.Role)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
 			form.AddFieldError("email", "Email or name address is already in use")
@@ -798,7 +816,8 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	form.Password, _ = generateRandomPassword(8) //NOTATION!!!!!
+	form.Role = userRole
+	form.Password, _ = generateRandomPassword(8) // NOTATION!!!!!
 
 	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
 	form.CheckField(validator.NotBlank(form.Email), "email", "This field cannot be blank")
@@ -813,7 +832,7 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	err = app.users.Insert(form.Name, form.Email, form.Password)
+	err = app.users.Insert(form.Name, form.Email, form.Password, form.Role)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
 			userID, _ := app.users.Authenticate(form.Email, form.Password)
@@ -836,7 +855,6 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		if errors.Is(err, models.ErrInvalidCredentials) {
 			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
-
 		} else {
 			app.serverError(w, err)
 		}
@@ -873,7 +891,9 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 
 	form := userSingupForm{}
 	json.Unmarshal([]byte(githubData), &form)
-	form.Password, _ = generateRandomPassword(8) //NOTATION!!!!!
+
+	form.Role = userRole
+	form.Password, _ = generateRandomPassword(8) // NOTATION!!!!!
 
 	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
 	form.CheckField(validator.NotBlank(form.Email), "email", "This field cannot be blank")
@@ -888,7 +908,7 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	err := app.users.Insert(form.Name, form.Email, form.Password)
+	err := app.users.Insert(form.Name, form.Email, form.Password, 2)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
 			userID, err := app.users.Authenticate(form.Email, form.Password)
@@ -953,7 +973,6 @@ func (app *application) gitHubCallbackHandler(w http.ResponseWriter, r *http.Req
 	gitHubAccessToken := app.getGitHubAccessToken(code)
 	gitHubData := getGitHubData(gitHubAccessToken)
 	app.loggedinHandler(w, r, gitHubData)
-
 }
 
 func (app *application) getGitHubAccessToken(code string) string {
@@ -995,8 +1014,8 @@ func (app *application) getGitHubAccessToken(code string) string {
 	json.Unmarshal(respbody, &ghresp)
 
 	return ghresp.AccessToken
-
 }
+
 func getGitHubData(accessToken string) string {
 	req, reqerr := http.NewRequest(
 		"GET",
@@ -1116,6 +1135,22 @@ func (app *application) isAuthenticated(r *http.Request) bool {
 	}
 
 	return time.Now().Before(expiry)
+}
+
+func (app *application) getRole(r *http.Request) int {
+	if !app.isAuthenticated(r) {
+		return guestRole
+	}
+
+	cookie, _ := r.Cookie("session")
+	user_id, _, _ := app.sessions.GetSession(cookie.Value)
+
+	role, err := app.users.GetUserRole(user_id)
+	if err != nil {
+		return -1
+	}
+
+	return role
 }
 
 func (app *application) isOwnForum(userID int, r *http.Request) bool {

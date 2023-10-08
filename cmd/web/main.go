@@ -75,6 +75,11 @@ func main() {
 		tempalteCache: templateCache,
 	}
 
+	err = app.createAdmin()
+	if err != nil {
+		errorLog.Fatal(err)
+	}
+
 	tlsConfig := &tls.Config{
 		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
 		MinVersion:       tls.VersionTLS12,
@@ -122,10 +127,8 @@ func readDB(path string, db *sql.DB) {
 		log.Fatal(err)
 	}
 
-	// Split the script into individual statements
 	statements := strings.Split(string(sqlScript), ";")
 
-	// Execute each SQL statement
 	for _, stmt := range statements {
 		trimmedStmt := strings.TrimSpace(stmt)
 		if len(trimmedStmt) > 0 {
