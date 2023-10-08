@@ -20,7 +20,6 @@ import (
 
 	"github.com/aspandyar/forum/internal/models"
 	"github.com/aspandyar/forum/internal/validator"
-	"github.com/mattn/go-sqlite3"
 )
 
 type forumCreateForm struct {
@@ -29,6 +28,7 @@ type forumCreateForm struct {
 	Tags      string
 	Expires   int
 	ImagePath string
+	AllTags   []string
 	validator.Validator
 }
 
@@ -95,22 +95,25 @@ type UserInfo struct {
 }
 
 func (app *application) createAdmin() error {
-	var err error
+	// var err error
 
 	adminName := os.Getenv("ADMIN_NAME")
 	adminPassword := os.Getenv("ADMIN_PASSWORD")
 	adminEmail := os.Getenv("ADMIN_EMAIL")
 
-	err = app.users.Insert(adminName, adminEmail, adminPassword, adminRole)
-	var sqliteErr sqlite3.Error
-	if errors.Is(err, models.ErrDuplicateEmail) || strings.Contains(sqliteErr.Error(), "UNIQUE constraint failed") {
-		return nil
-	}
+	app.users.Insert(adminName, adminEmail, adminPassword, adminRole)
+	// var sqliteErr sqlite3.Error
+	// if errors.Is(err, models.ErrDuplicateEmail) || strings.Contains(sqliteErr.Error(), "UNIQUE constraint failed") {
+	// }
 
-	err = app.users.GetAdminUser()
-	if errors.Is(err, models.ErrDuplicateEmail) || strings.Contains(sqliteErr.Error(), "UNIQUE constraint failed") {
-		return nil
-	}
+	app.users.InsertTags("tag 1")
+	app.users.InsertTags("tag 2")
+	app.users.InsertTags("tag 3")
+
+	app.users.GetAdminUser()
+	// if errors.Is(err, models.ErrDuplicateEmail) || strings.Contains(sqliteErr.Error(), "UNIQUE constraint failed") {
+	// 	return nil
+	// }
 
 	return nil
 }
@@ -494,6 +497,62 @@ func (app *application) forumAcceptHandler(w http.ResponseWriter, r *http.Reques
 	http.Redirect(w, r, "/user/notification", http.StatusSeeOther)
 }
 
+func (app *application) addTagsHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		app.addTagsGet(w, r)
+	case http.MethodPost:
+		app.addTagsPost(w, r)
+	default:
+		w.Header().Set("Allow", http.MethodPost+", "+http.MethodGet)
+		app.clientError(w, http.StatusMethodNotAllowed)
+	}
+}
+
+func (app *application) addTagsGet(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	app.render(w, http.StatusOK, "addTags.tmpl.html", data)
+}
+
+func (app *application) addTagsPost(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	add := r.FormValue("add_tag")
+	remove := r.FormValue("remove_tag")
+	tagsText := r.FormValue("tags_text")
+
+	tags := strings.Split(tagsText, ", ")
+
+	if add != "" && remove != "" {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	if add == "1" {
+		for _, tag := range tags {
+			err = app.users.InsertTags(tag)
+		}
+	} else if remove == "-1" {
+		for _, tag := range tags {
+			err = app.users.RemoveTag(tag)
+		}
+	} else {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
 func (app *application) forumReportHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -678,9 +737,18 @@ func (app *application) handleForumCreate(w http.ResponseWriter, r *http.Request
 func (app *application) ForumCreateGet(w http.ResponseWriter, r *http.Request) {
 	data := app.newTemplateData(r)
 
-	data.Form = forumCreateForm{
-		Expires: 365,
+	tags, err := app.forums.GetAllTags()
+	if err != nil {
+		app.serverError(w, err)
+		return
 	}
+
+	form := forumCreateForm{
+		Expires: 365,
+		AllTags: tags,
+	}
+
+	data.Form = form
 
 	app.render(w, http.StatusOK, "create.tmpl.html", data)
 }
@@ -1857,14 +1925,12 @@ func (app *application) ForumRemoveCommentPost(w http.ResponseWriter, r *http.Re
 	idStr := parts[4]
 	forumID, err := strconv.Atoi(idStr)
 	if err != nil || forumID < 1 {
-		fmt.Println(idStr)
 		return
 	}
 
 	idStr = parts[5]
 	commentID, err := strconv.Atoi(idStr)
 	if err != nil || commentID < 1 {
-		fmt.Println(idStr)
 		return
 	}
 

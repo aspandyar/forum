@@ -12,6 +12,9 @@
         {{if or (eq .Role 3) (eq .Role 4)}}
         | <a href="/user/notification">Your notification</a>
         {{end}}
+        {{if eq .Role 4}}
+        | <a href="/admin/addTags">Add tags</a>
+        {{end}}
         {{end}}
     </div>
     <div class="auth-section">

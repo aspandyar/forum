@@ -61,3 +61,8 @@ CREATE TABLE IF NOT EXISTS forum_notifications (
     user_id INTEGER NOT NULL,
     user_not_id INT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS forum_tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tags TEXT UNIQUE
+)

@@ -866,6 +866,31 @@ func (m *ForumModel) GetUserByForumID(forumID int) (User, error) {
 	return user, nil
 }
 
+func (m *ForumModel) GetAllTags() ([]string, error) {
+	stmt := `SELECT tags FROM forum_tags;`
+
+	rows, err := m.DB.Query(stmt)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	tags := make([]string, 0)
+
+	for rows.Next() {
+		var tag string
+		err := rows.Scan(&tag)
+		if err != nil {
+			return nil, err
+		}
+
+		tags = append(tags, tag)
+	}
+
+	return tags, nil
+}
+
 func (m *ForumModel) ChangeForumStatus(forumID int, status int) error {
 	stmt := `UPDATE forums
 	SET status = ? WHERE id = ?`

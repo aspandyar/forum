@@ -1,0 +1,16 @@
+{{define "title"}}Add Or Remove Tags{{end}}
+
+{{define "main"}}
+<h2>Tags</h2>
+<form method="post">
+    <label>
+        <input type="radio" name="add_tag" value="1"> Add Tag
+    </label>
+    <label>
+        <input type="radio" name="remove_tag" value="-1"> Remove Tag
+    </label>
+    <label>Write Tags Name:</label>
+    <textarea id="tags_text" name="tags_text"></textarea><br>
+    <input type="submit" value="Submit">
+</form>
+{{end}}

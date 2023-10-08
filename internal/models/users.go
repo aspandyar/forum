@@ -57,6 +57,29 @@ func (m *UserModel) Insert(name, email, password string, role int) error {
 	return nil
 }
 
+func (m *UserModel) InsertTags(tag string) error {
+	stmt := `INSERT INTO forum_tags (tags)
+	VALUES (?);`
+
+	_, err := m.DB.Exec(stmt, tag)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *UserModel) RemoveTag(tag string) error {
+	stmt := `DELETE FROM forum_tags WHERE tags = ?;`
+
+	_, err := m.DB.Exec(stmt, tag)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *UserModel) Authenticate(email, password string) (int, error) {
 	var id int
 	var hashedPassword []byte

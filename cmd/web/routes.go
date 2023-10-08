@@ -81,6 +81,9 @@ func (app *application) routes() http.Handler {
 	userNotificationSection := http.HandlerFunc(app.userNotification)
 	mux.Handle("/user/notification", app.requireAuthentication(userNotificationSection))
 
+	addTags := http.HandlerFunc(app.addTagsHandler)
+	mux.Handle("/admin/addTags", app.requireAuthentication(addTags))
+
 	userNotificationSectionRemove := http.HandlerFunc(app.userNotificationRemove)
 	mux.Handle("/user/notification/remove/", app.requireAuthentication(userNotificationSectionRemove))
 
