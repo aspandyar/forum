@@ -28,13 +28,13 @@
             <td>{{ .Body }}</td>
             {{if ne .ForumID 0}}
             <td>
-                <a href="/forum/view/{{ .ForumID }}">reported post</a>
+                reported post<!-- <a href="/forum/view/{{ .ForumID }}">reported post</a> -->
             </td>
             {{end}}
-            {{if eq .Status moder}}
+            {{if eq .Status "moder"}}
             <td>
-                <a href="/moderation/accept/{{.ID}}/{{.UserCommentedID}}">accept</a> | 
-                <a href="/user/notification/remove/{{.ID}}">report</a>
+                <a href="/moderation/forum/{{.ID}}/{{.ForumID}}">accept</a> | 
+                <a href="/user/notification/remove/{{.ID}}">remove</a>
             </td>
             {{else}}
             <td>

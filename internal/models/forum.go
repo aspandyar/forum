@@ -447,7 +447,7 @@ func (m *ForumModel) GetEdit(forumID, userID int, isOwnForum bool, commentID int
 func (m *ForumModel) Latest() ([]*Forum, error) {
 	stmt := `SELECT id, title, content, tags, created, expires
 	FROM forums
-	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now')
+	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now') AND status = 1
 	ORDER BY id DESC
 	LIMIT 10;`
 
@@ -481,7 +481,7 @@ func (m *ForumModel) Latest() ([]*Forum, error) {
 func (m *ForumModel) ShowAll() ([]*Forum, error) {
 	stmt := `SELECT id, title, content, tags, created, expires
 	FROM forums
-	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now')
+	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now') AND status = 1
 	ORDER BY id DESC;`
 
 	rows, err := m.DB.Query(stmt)
@@ -546,7 +546,7 @@ func (m *ForumModel) Remove(forumID int) error {
 func (m *ForumModel) ShowCategory(tags []string) ([]*Forum, error) {
 	stmt := `SELECT id, title, content, tags, created, expires
 	FROM forums
-	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now')
+	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now') AND status = 1
 	ORDER BY id DESC;`
 
 	rows, err := m.DB.Query(stmt)
@@ -583,7 +583,7 @@ func (m *ForumModel) ShowCategory(tags []string) ([]*Forum, error) {
 func (m *ForumModel) ShowAllUserPosts(userID int) ([]*Forum, error) {
 	stmt := `SELECT id, title, content, tags, created, expires
 	FROM forums 
-	WHERE user_id = ?;`
+	WHERE user_id = ? AND status = 1;`
 
 	rows, err := m.DB.Query(stmt, userID)
 	if err != nil {
@@ -775,7 +775,7 @@ func (m *ForumModel) ShowAllUserLikes(userID int) ([]*Forum, error) {
 		JOIN forum_likes fl ON fl.comment_id = fc.id 
 		WHERE fl.user_id = ?
 	) AS relevant_forums ON f.id = relevant_forums.forum_id
-	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now');`
+	WHERE expires > strftime('%Y-%m-%d %H:%M:%S', 'now') AND f.status = 1;`
 
 	rows, err := m.DB.Query(stmt, userID, userID)
 	if err != nil {
@@ -818,7 +818,7 @@ func containsAny(source []string, target []string) bool {
 func (m *ForumModel) GetUserIDFromForum(forumID int) (int, error) {
 	stmt := `SELECT user_id
 	FROM forums 
-	WHERE id = ?;`
+	WHERE id = ? AND status = 1;`
 
 	row := m.DB.QueryRow(stmt, forumID)
 
@@ -845,4 +845,16 @@ func (m *ForumModel) GetUserByUserID(userID int) (string, error) {
 	}
 
 	return user.Name, nil
+}
+
+func (m *ForumModel) ChangeForumStatus(forumID int) error {
+	stmt := `UPDATE forums
+	SET status = 1 WHERE id = ?`
+
+	_, err := m.DB.Exec(stmt, forumID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

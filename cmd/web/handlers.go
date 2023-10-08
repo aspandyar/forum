@@ -284,7 +284,13 @@ func (app *application) userNotificationRemove(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if adminID != 1 {
+	role, err := app.forums.GetRoleByUserID(adminID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	if role != AdminRole && role != ModeratorRole {
 		app.clientError(w, http.StatusMethodNotAllowed)
 		return
 	}
@@ -333,6 +339,39 @@ func (app *application) userModerationDone(w http.ResponseWriter, r *http.Reques
 	}
 
 	err = app.forums.RemoveUserNotification(id)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/user/notification", http.StatusSeeOther)
+}
+
+func (app *application) forumAcceptHandler(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	idStr := parts[3]
+	notID, err := strconv.Atoi(idStr)
+	if err != nil || notID < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	idStr = parts[4]
+	fourmID, err := strconv.Atoi(idStr)
+	if err != nil || fourmID < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	err = app.forums.ChangeForumStatus(fourmID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.forums.RemoveUserNotification(notID)
 	if err != nil {
 		app.serverError(w, err)
 		return
