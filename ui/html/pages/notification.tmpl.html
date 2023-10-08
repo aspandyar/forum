@@ -52,7 +52,8 @@
             {{if ne .ForumID 0}}
             <td>
                 <a href="/user/notification/remove/{{.ID}}">skip</a> |
-                <a href="/user/report/remove/{{.ID}}/{{.ForumID}}/{{.UserID}}">remove</a>
+                <a href="/user/report/remove/{{.ID}}/{{.ForumID}}/{{.UserID}}">remove</a> |
+                <a href="/moderation/denote/{{.UserID}}/{{.ID}}">denote moder</a>
             </td>
             {{else}}
             <td>

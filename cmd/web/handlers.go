@@ -428,6 +428,39 @@ func (app *application) userModerationDone(w http.ResponseWriter, r *http.Reques
 	http.Redirect(w, r, "/user/notification", http.StatusSeeOther)
 }
 
+func (app *application) moderDenoteHandler(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	idStr := parts[3]
+	moderID, err := strconv.Atoi(idStr)
+	if err != nil || moderID < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	idStr = parts[4]
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	err = app.forums.ChangeUserRole(moderID, userRole)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.forums.RemoveUserNotification(id)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/user/notification", http.StatusSeeOther)
+}
+
 func (app *application) forumAcceptHandler(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
@@ -511,7 +544,19 @@ func (app *application) ForumReportPost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = app.forums.ReportForum(forumID, adminID, form.reportTypes+" "+form.reportDetails)
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	moderID, _, err := app.sessions.GetSession(cookie.Value)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.forums.ReportForum(forumID, moderID, form.reportTypes+" "+form.reportDetails)
 	if err != nil {
 		app.serverError(w, err)
 		return

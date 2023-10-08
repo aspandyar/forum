@@ -31,7 +31,7 @@ func (m *ForumModel) AskForModeration(userID int) error {
 	not.Body = "asked for moder"
 	not.Status = AdminStatus
 	not.ForumID = 0 // not needed here
-	not.UserID = AdminRole
+	not.UserID = AdminID
 	not.UserCommented, err = m.GetUserByUserID(userID)
 	not.UserCommentedID = userID
 
@@ -43,7 +43,7 @@ func (m *ForumModel) AskForModeration(userID int) error {
 	return nil
 }
 
-func (m *ForumModel) ReportForum(forumID, getUserID int, body string) error {
+func (m *ForumModel) ReportForum(forumID, moderID int, body string) error {
 	stmt := `INSERT INTO forum_notifications (user_name, body, status, forum_link, user_id, user_not_id)
 	VALUES(?, ?, ?, ?, ?, ?)`
 	not := *&Notification{}
@@ -57,7 +57,7 @@ func (m *ForumModel) ReportForum(forumID, getUserID int, body string) error {
 	not.Body = body
 	not.Status = AdminStatus
 	not.ForumID = forumID
-	not.UserID = getUserID
+	not.UserID = moderID
 	not.UserCommentedID = user.ID
 	not.UserCommented, err = m.GetUserByUserID(user.ID)
 	if err != nil {

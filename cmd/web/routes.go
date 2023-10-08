@@ -42,6 +42,9 @@ func (app *application) routes() http.Handler {
 	forumReport := http.HandlerFunc(app.forumReportHandler)
 	mux.Handle("/moderation/report/", app.requireAuthentication(forumReport))
 
+	moderDenote := http.HandlerFunc(app.moderDenoteHandler)
+	mux.Handle("/moderation/denote/", app.requireAuthentication(moderDenote))
+
 	forumCreate := http.HandlerFunc(app.handleForumCreate)
 	mux.Handle("/forum/create", app.requireAuthentication(forumCreate))
 
