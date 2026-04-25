@@ -1,37 +1,71 @@
 # Forum
 
-## Description
+Simple Go-based forum application with server-rendered HTML, SQLite storage, and role-based moderation features.
 
-This project consists in creating a web forum that allows:
-   * communication between users;
-   * associating categories to posts;
-   * liking and disliking posts and comments;
-   * filtering posts.
+## Features
 
-### Docker
-Docker is used to be able to containerize the project.
+- User signup/login/logout
+- Forum post create/edit/delete
+- Comments and likes/dislikes for posts and comments
+- Category/tag filtering
+- Role-based moderation flows
+- Google and GitHub OAuth login paths
 
-To build docker image run the following command:
+## Quickstart
+
+### Prerequisites
+
+- Go 1.20+
+- Docker (optional, for container workflow)
+- `make`
+
+### 1) Bootstrap local prerequisites
+
+This project expects three local artifacts:
+
+- `st.db`
+- `.env` (with DB credentials)
+- TLS certificates under `tls/`
+
+Create all of them with:
+
+```bash
+make start
+```
+
+### 2) Run the app
+
+Run directly with Go:
+
+```bash
+go run ./cmd/web/
+```
+
+Open:
+
+[`https://localhost:4000`](https://localhost:4000)
+
+The server uses TLS, so your browser may show a certificate warning for local development.
+
+## Docker Workflow
+
+```bash
 make build
-
-To run container for docker image run the following command:
 make run
+make stop
+```
 
-Go to: http://localhost:4000 
+`make run` maps `4000:4000`, so the app remains available at:
 
-### Run Locally with makefile
-1. make build
-2. make run
-3. make stop
+[`https://localhost:4000`](https://localhost:4000)
 
-### Run Locally without docker and makefile
-Run the following command: "go run ./cmd/web/" and click on the generated URL address to go to the web page
+## Documentation
 
+- Development setup, env vars, TLS details, troubleshooting: [`docs/development.md`](docs/development.md)
+- Refresh audit and modernization backlog: [`docs/audit-and-refresh.md`](docs/audit-and-refresh.md)
+- Architecture and important task map: [`docs/architecture.md`](docs/architecture.md)
 
-### Authors
-@aspandyar
-@sfaizull
+## Authors
 
-
-#### For download 20mb or higher picture, use following link:
-https://visibleearth.nasa.gov/collection/1484/blue-marble?page=2
+- `@aspandyar`
+- `@sfaizull`

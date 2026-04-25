@@ -36,8 +36,8 @@ COPY st.db init-up.sql ./
 # Copy the built binary from the build stage
 COPY --from=build /app .
 
-# Expose the port your application listens on
-EXPOSE 8080
+# Expose the port the application listens on
+EXPOSE 4000
 
 # Define the command to run the application
 CMD ["./main"]
