@@ -740,7 +740,7 @@ paths:
     get:
       tags: [Moderation]
       summary: Moderation notification inbox
-      description: Requires authenticated **moderator** or **admin**; otherwise **405**.
+      description: "Requires authenticated **moderator** or **admin**; otherwise **405**."
       security:
         - sessionCookie: []
       responses:
@@ -793,7 +793,7 @@ paths:
     get:
       tags: [Moderation]
       summary: Admin resolve report — hide forum and notify user
-      description: **Admin only** (otherwise 405).
+      description: "**Admin only** (otherwise 405)."
       security:
         - sessionCookie: []
       responses:
