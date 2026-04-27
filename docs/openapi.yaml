@@ -1,0 +1,847 @@
+openapi: 3.0.3
+info:
+  title: Forum
+  description: |
+    HTTP surface for the Go forum application ([server-rendered HTML](https://github.com/aspandyar/forum)).
+
+    Most responses are **text/html** or **302** redirects. Submit forms as
+    `application/x-www-form-urlencoded` unless noted (`multipart/form-data` for uploads).
+
+    **Sessions:** Protected routes expect a **`session`** cookie issued after signup, password login,
+    Google OAuth (`/callback`), or GitHub OAuth (`/login/github/callback`). Routes wrapped with
+    authentication middleware redirect unauthenticated callers to **`/user/login`** (302), not JSON 401.
+
+    **Rate limiting:** Abuse of any route may produce **429 Too Many Requests** per client IP.
+
+    **Roles:** Several routes require moderator or administrator (see descriptions). Responses may include **405** when the role is insufficient.
+  version: "1.0"
+  license:
+    name: See repository
+
+servers:
+  - url: https://localhost:4000
+    description: Default TLS dev server (`go run ./cmd/web/`)
+
+tags:
+  - name: Public
+    description: No session required (may still show personalized UI when a cookie is present).
+  - name: Auth-Session
+    description: Password signup/login, logout, session cookie lifecycle.
+  - name: OAuth
+    description: Browser OAuth redirects (Google / GitHub).
+  - name: Forum
+    description: Posts, listing, filters, likes, comments.
+  - name: Moderation
+    description: Moderator/admin workflows (often requires elevated role).
+  - name: Admin
+    description: Administrative tools (typically admin-only).
+
+security: []
+
+paths:
+  /openapi.yaml:
+    get:
+      tags: [Public]
+      summary: OpenAPI specification (this document)
+      responses:
+        "200":
+          description: YAML document
+          content:
+            application/yaml:
+              schema:
+                type: string
+            text/yaml:
+              schema:
+                type: string
+
+  /swagger/:
+    get:
+      tags: [Public]
+      summary: Swagger UI
+      responses:
+        "200":
+          description: HTML page loading Swagger UI
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /static/{path}:
+    get:
+      tags: [Public]
+      summary: Static assets (CSS, images, JS)
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File contents
+        "404":
+          description: Not found
+
+  /:
+    get:
+      tags: [Public]
+      summary: Home — latest forums
+      responses:
+        "200":
+          description: HTML
+          content: &html
+            text/html:
+              schema:
+                type: string
+        "404":
+          description: Path must be exactly `/`
+
+  /showAll:
+    get:
+      tags: [Public]
+      summary: List all forums
+      responses:
+        "200":
+          description: HTML
+          content: *html
+        "404":
+          description: Path must be exactly `/showAll`
+
+  /forum/category:
+    get:
+      tags: [Forum]
+      summary: Category filter page (initial load / all forums)
+      responses:
+        "200":
+          description: HTML
+          content: *html
+        "404":
+          description: Wrong path
+    post:
+      tags: [Forum]
+      summary: Filter forums by tags
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                tags:
+                  type: array
+                  items:
+                    type: string
+                custom_tags:
+                  type: string
+                  description: Comma-separated custom tags (processed server-side).
+      responses:
+        "200":
+          description: HTML listing
+          content: *html
+        "400":
+          description: Invalid form
+
+  /forum/view/{forumId}:
+    parameters:
+      - name: forumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Forum]
+      summary: View single forum thread
+      responses:
+        "200":
+          description: HTML
+          content: *html
+        "404":
+          description: Forum not found or invalid id
+
+  /forum/create:
+    get:
+      tags: [Forum]
+      summary: Show create-forum form
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: HTML form
+          content: *html
+        "302":
+          description: Redirect to `/user/login` if unauthenticated
+    post:
+      tags: [Forum]
+      summary: Create forum (multipart; optional image)
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [title, content, expires]
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                expires:
+                  type: integer
+                  enum: [1, 7, 365]
+                tags:
+                  type: array
+                  items:
+                    type: string
+                custom_tags:
+                  type: string
+                image-upload:
+                  type: string
+                  format: binary
+                  description: Optional image upload (max ~20 MiB server-side).
+      responses:
+        "302":
+          description: Redirect to `/` on success, or to `/user/login` if unauthenticated
+        "422":
+          description: Validation errors (HTML form)
+          content: *html
+
+  /forum/edit/{forumId}:
+    parameters:
+      - name: forumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Forum]
+      summary: Edit forum form
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: HTML
+          content: *html
+        "404":
+          description: Not found or insufficient access
+    post:
+      tags: [Forum]
+      summary: Submit forum edits
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                expires:
+                  type: integer
+                  enum: [1, 7, 365]
+                tags:
+                  type: array
+                  items:
+                    type: string
+                custom_tags:
+                  type: string
+                image-upload:
+                  type: string
+                  format: binary
+      responses:
+        "302":
+          description: Redirect to `/forum/view/{forumId}`
+        "422":
+          description: Validation error page
+          content: *html
+
+  /forum/remove/{forumId}:
+    parameters:
+      - name: forumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Forum]
+      summary: Remove forum (owner or admin)
+      description: Handler does not enforce HTTP method; typical use is GET via link.
+      security:
+        - sessionCookie: []
+      responses:
+        "302":
+          description: Redirect to `/showAll` on success, or to `/user/login` if unauthenticated
+        "400":
+          description: Caller is not owner/admin
+
+  /forum/like/{forumId}:
+    parameters:
+      - name: forumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    post:
+      tags: [Forum]
+      summary: Like or dislike forum post
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [button]
+              properties:
+                button:
+                  type: string
+                  enum: [like, dislike]
+      responses:
+        "302":
+          description: Redirect back to `/forum/view/{forumId}`
+        "405":
+          description: Wrong method (POST only)
+
+  /forum/comment/{forumId}:
+    parameters:
+      - name: forumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Forum]
+      summary: GET forwarded to forum view logic
+      description: |
+        Handler forwards GET to `forumView`, which expects path `/forum/view/{id}`.
+        Requests to `/forum/comment/{forumId}` therefore typically yield **404**.
+      security:
+        - sessionCookie: []
+      responses:
+        "404":
+          description: Path shape mismatch in forwarded handler
+    post:
+      tags: [Forum]
+      summary: Post a comment on a forum
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [comment]
+              properties:
+                comment:
+                  type: string
+      responses:
+        "302":
+          description: Redirect to `/forum/view/{forumId}`
+        "422":
+          description: Validation error (HTML)
+          content: *html
+
+  /forum/comment/edit/{forumId}/{commentId}:
+    parameters:
+      - name: forumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Forum]
+      summary: Comment edit view
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: HTML
+          content: *html
+        "404":
+          description: Not found
+    post:
+      tags: [Forum]
+      summary: Submit edited comment
+      security:
+        - sessionCookie: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [comment]
+              properties:
+                comment:
+                  type: string
+      responses:
+        "302":
+          description: Redirect to `/forum/view/{forumId}`
+        "422":
+          description: Validation error
+          content: *html
+
+  /forum/comment/remove/{forumId}/{commentId}:
+    parameters:
+      - name: forumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Forum]
+      summary: Remove comment (owner or admin)
+      description: Handler does not validate HTTP method explicitly.
+      security:
+        - sessionCookie: []
+      responses:
+        "302":
+          description: Redirect to thread on success
+        "405":
+          description: User may not delete this comment
+
+  /forum/likeComment/{commentId}:
+    parameters:
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    post:
+      tags: [Forum]
+      summary: Like or dislike a comment
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [button]
+              properties:
+                button:
+                  type: string
+                  enum: [like, dislike]
+      responses:
+        "302":
+          description: Redirect to forum view containing the comment's thread
+
+  /forum/allLikes:
+    get:
+      tags: [Forum]
+      summary: Forums the current user liked
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: HTML listing
+          content: *html
+
+  /forum/all_comments:
+    get:
+      tags: [Forum]
+      summary: Comments by the current user
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: HTML
+          content: *html
+
+  /forum/allPosts:
+    get:
+      tags: [Forum]
+      summary: Posts created by the current user
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: HTML
+          content: *html
+
+  /user/signup:
+    get:
+      tags: [Auth-Session]
+      summary: Signup form
+      responses:
+        "200":
+          description: HTML
+          content: *html
+    post:
+      tags: [Auth-Session]
+      summary: Register local account
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        "302":
+          description: Redirect to `/user/login` on success
+        "422":
+          description: Validation or duplicate email
+          content: *html
+
+  /user/login:
+    get:
+      tags: [Auth-Session]
+      summary: Login form
+      responses:
+        "200":
+          description: HTML
+          content: *html
+    post:
+      tags: [Auth-Session]
+      summary: Password login (sets session cookie)
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "302":
+          description: Redirect to `/forum/create` on success
+        "422":
+          description: Invalid credentials or validation
+          content: *html
+
+  /user/logout:
+    post:
+      tags: [Auth-Session]
+      summary: Invalidate session cookie
+      description: Middleware requires a session; handler itself does not restrict HTTP method.
+      security:
+        - sessionCookie: []
+      responses:
+        "302":
+          description: Redirect to `/`
+
+  /auth:
+    get:
+      tags: [OAuth]
+      summary: Start Google OAuth (redirect)
+      responses:
+        "302":
+          description: Redirect to Google authorization endpoint
+
+  /callback:
+    get:
+      tags: [OAuth]
+      summary: Google OAuth redirect URI
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+          description: Authorization code from Google
+      responses:
+        "302":
+          description: Redirect into app after signup/session creation
+        "500":
+          description: Token exchange or upstream errors
+
+  /login/github/:
+    get:
+      tags: [OAuth]
+      summary: Start GitHub OAuth (redirect)
+      responses:
+        "302":
+          description: Redirect to GitHub authorize URL
+
+  /login/github/callback:
+    get:
+      tags: [OAuth]
+      summary: GitHub OAuth callback
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Continue login flow (`loggedinHandler` with token exchange)
+        "500":
+          description: Upstream or parsing errors
+
+  /loggedin:
+    get:
+      tags: [OAuth]
+      summary: GitHub login completion hook
+      description: |
+        Invoked internally with OAuth user JSON. A bare GET without server-side context
+        is expected to fail (handler requires non-empty GitHub payload).
+      responses:
+        "500":
+          description: Unauthorized / error when payload missing
+
+  /moderation/ask:
+    get:
+      tags: [Moderation]
+      summary: Request promotion to moderator (authenticated user)
+      security:
+        - sessionCookie: []
+      responses:
+        "302":
+          description: Redirect to `/`
+
+  /moderation/accept/{notificationId}/{userId}:
+    parameters:
+      - name: notificationId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Moderation]
+      summary: Accept moderator application
+      security:
+        - sessionCookie: []
+      responses:
+        "302":
+          description: Redirect to `/user/notification`
+
+  /moderation/forum/{notificationId}/{forumId}:
+    parameters:
+      - name: notificationId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: forumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Moderation]
+      summary: Approve a pending forum post
+      security:
+        - sessionCookie: []
+      responses:
+        "302":
+          description: Redirect to `/user/notification`
+
+  /moderation/report/{forumId}:
+    parameters:
+      - name: forumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Moderation]
+      summary: Report forum — form
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: HTML report form
+          content: *html
+    post:
+      tags: [Moderation]
+      summary: Submit forum report
+      security:
+        - sessionCookie: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                reportType:
+                  type: array
+                  items:
+                    type: string
+                reportDetails:
+                  type: string
+      responses:
+        "302":
+          description: Redirect to `/forum/view/{forumId}`
+
+  /moderation/denote/{moderatorId}/{notificationId}:
+    parameters:
+      - name: moderatorId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: notificationId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Moderation]
+      summary: Remove moderator role from user
+      security:
+        - sessionCookie: []
+      responses:
+        "302":
+          description: Redirect to `/user/notification`
+
+  /user/notification:
+    get:
+      tags: [Moderation]
+      summary: Moderation notification inbox
+      description: Requires authenticated **moderator** or **admin**; otherwise **405**.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: HTML notifications
+          content: *html
+        "405":
+          description: Role not moderator/admin
+
+  /user/notification/remove/{notificationId}:
+    parameters:
+      - name: notificationId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Moderation]
+      summary: Dismiss notification
+      description: Requires moderator or admin role.
+      security:
+        - sessionCookie: []
+      responses:
+        "302":
+          description: Redirect to `/user/notification`
+        "405":
+          description: Insufficient role
+
+  /user/report/remove/{notificationId}/{forumId}/{targetUserId}:
+    parameters:
+      - name: notificationId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: forumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: targetUserId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [Moderation]
+      summary: Admin resolve report — hide forum and notify user
+      description: **Admin only** (otherwise 405).
+      security:
+        - sessionCookie: []
+      responses:
+        "302":
+          description: Redirect to `/user/notification`
+        "405":
+          description: Not admin
+
+  /admin/addTags:
+    get:
+      tags: [Admin]
+      summary: Tag management page
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: HTML
+          content: *html
+    post:
+      tags: [Admin]
+      summary: Add or remove tags
+      security:
+        - sessionCookie: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                add_tag:
+                  type: string
+                  description: Set to `"1"` when adding tags.
+                remove_tag:
+                  type: string
+                  description: Set to `"-1"` when removing tags.
+                tags_text:
+                  type: string
+                  description: Comma-separated tag names (`", "` separated list processed server-side).
+      responses:
+        "302":
+          description: Redirect to `/` on success
+        "400":
+          description: Ambiguous add/remove request
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Session token HTTP-only cookie issued by the application after authentication.

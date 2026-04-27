@@ -64,6 +64,7 @@ make stop
 - Development setup, env vars, TLS details, troubleshooting: [`docs/development.md`](docs/development.md)
 - Refresh audit and modernization backlog: [`docs/audit-and-refresh.md`](docs/audit-and-refresh.md)
 - Architecture and important task map: [`docs/architecture.md`](docs/architecture.md)
+- HTTP API (OpenAPI): [`docs/openapi.yaml`](docs/openapi.yaml). With the server running, browse [**Swagger UI**](https://localhost:4000/swagger/) (same TLS note as the app).
 
 ## Authors
 

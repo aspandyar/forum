@@ -5,6 +5,16 @@ import "net/http"
 func (app *application) routes() http.Handler {
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("/openapi.yaml", app.openapiYAML)
+	mux.HandleFunc("/swagger/", app.swaggerUI)
+	mux.HandleFunc("/swagger", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			return
+		}
+		http.Redirect(w, r, "/swagger/", http.StatusFound)
+	})
+
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
 	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
 
