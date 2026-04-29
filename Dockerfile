@@ -1,43 +1,27 @@
-# Use a specific version of the Golang base image for building
-FROM golang:1.20-alpine AS build
+FROM golang:1.26-alpine AS build
 
-# Set metadata
-LABEL version="1.0" maintainer="asharip <aspandyart@gmail.com>"
+WORKDIR /src
 
-ENV GO111MODULE=on
+RUN apk add --no-cache build-base
 
-# Set the working directory
-WORKDIR /app
-
-# Copy Go module files for dependency management
 COPY go.mod go.sum ./
-
-COPY /ui/. /app/ui
-
-# Download dependencies
 RUN go mod download
 
-# Copy the application source code
 COPY . .
+RUN CGO_ENABLED=1 GOOS=linux go build -o /bin/forum ./cmd/web
 
-# Build the application
-RUN apk add --no-cache build-base  \
-&& go build -o main ./cmd/web/*
+FROM alpine:3.22
 
-# Create a minimal runtime image
-FROM alpine:latest
-
-# Set the working directory
 WORKDIR /app
 
-# Copy the ts.db file and the database initialization script
-COPY st.db init-up.sql ./
+RUN apk add --no-cache ca-certificates && adduser -D -u 10001 forum
 
-# Copy the built binary from the build stage
-COPY --from=build /app .
+COPY --from=build /bin/forum /app/forum
+COPY init-up.sql /app/init-up.sql
+COPY ui /app/ui
 
-# Expose the port the application listens on
+USER forum
+
 EXPOSE 4000
 
-# Define the command to run the application
-CMD ["./main"]
+CMD ["./forum"]

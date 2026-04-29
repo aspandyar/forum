@@ -1,0 +1,16 @@
+services:
+  forum:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: forum:local
+    container_name: forumContainer
+    ports:
+      - "4001:4000"
+    env_file:
+      - .env
+    volumes:
+      - ./st.db:/app/st.db
+      - ./.env:/app/.env:ro
+      - ./tls:/app/tls:ro
+    restart: unless-stopped

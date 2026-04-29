@@ -13,13 +13,13 @@ start:
 	(cd $(TLS_DIR) && go run $(GO_ENV_GOROOT)/src/crypto/tls/generate_cert.go --rsa-bits=2048 --host=localhost)
 
 build:
-	docker build --tag ${APPLICATION_NAME} .
+	docker compose build
 
 run:
-	docker run -d -p 4000:4000 --rm --name ${DOCKER_USERNAME} ${APPLICATION_NAME}
+	docker compose up -d
 
 stop:
-	docker stop ${DOCKER_USERNAME}
+	docker compose down
 
 
 test-cover:

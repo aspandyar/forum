@@ -2,7 +2,6 @@ package models
 
 import (
 	"database/sql"
-	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -77,29 +76,6 @@ func (m *SessionModel) GetSession(token string) (int, time.Time, error) {
 	}
 	parsedTime, _ := time.Parse("2006-01-02 15:04:05.999999999-07:00", expiry)
 	return userID, parsedTime, nil
-}
-
-func SetSessionCookie(w http.ResponseWriter, token string, expiration time.Time) {
-	sessionCookie := &http.Cookie{
-		Name:     "session",
-		Value:    token,
-		Expires:  expiration,
-		Path:     "/",
-		Secure:   true,                    // Set the Secure attribute to true
-		HttpOnly: true,                    // Recommended to set HttpOnly to prevent JavaScript access
-		SameSite: http.SameSiteStrictMode, // Recommended for security
-	}
-	http.SetCookie(w, sessionCookie)
-}
-
-func ClearSessionCookie(w http.ResponseWriter) {
-	expiredCookie := &http.Cookie{
-		Name:    "session",
-		Value:   "",
-		Expires: time.Now().Add(-1 * time.Hour),
-		Path:    "/",
-	}
-	http.SetCookie(w, expiredCookie)
 }
 
 func (m *SessionModel) InvalidateSession(token string) error {

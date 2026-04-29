@@ -2,16 +2,16 @@ package main
 
 import (
 	"net/http"
-	"strconv"
-	"strings"
+
+	requestpkg "github.com/aspandyar/forum/internal/transport/http/request"
 )
 
 func pathParts(r *http.Request) []string {
-	return strings.Split(r.URL.Path, "/")
+	return requestpkg.PathParts(r)
 }
 
 func pathInt(parts []string, idx int) (int, error) {
-	return strconv.Atoi(parts[idx])
+	return requestpkg.PathInt(parts, idx)
 }
 
 func (app *application) sessionUserID(r *http.Request) (int, error) {
