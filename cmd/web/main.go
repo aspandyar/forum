@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"flag"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -12,7 +11,9 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/aspandyar/forum/internal/config/envfile"
 	"github.com/aspandyar/forum/internal/models"
+	"github.com/aspandyar/forum/internal/security/tlsconfig"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -39,7 +40,7 @@ func main() {
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
-	err := LoadEnvFromFile(".env")
+	err := envfile.Load(".env")
 	if err != nil {
 		log.Fatal("Error loading .env file:", err)
 	}
@@ -121,7 +122,7 @@ func openDB(path string) (*sql.DB, error) {
 }
 
 func readDB(path string, db *sql.DB) {
-	sqlScript, err := ioutil.ReadFile(path)
+	sqlScript, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -137,4 +138,16 @@ func readDB(path string, db *sql.DB) {
 			}
 		}
 	}
+}
+
+func ConfigureCipherSuites(config *tls.Config, cipherSuites []uint16) {
+	tlsconfig.ConfigureCipherSuites(config, cipherSuites)
+}
+
+func SetMinTLSVersion(config *tls.Config, version uint16) {
+	tlsconfig.SetMinTLSVersion(config, version)
+}
+
+func SetMaxTLSVersion(config *tls.Config, version uint16) {
+	tlsconfig.SetMaxTLSVersion(config, version)
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aspandyar/forum/internal/models"
+	sessioncookie "github.com/aspandyar/forum/internal/transport/http/sessioncookie"
 	"github.com/aspandyar/forum/internal/validator"
 )
 
@@ -131,7 +132,7 @@ func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 		return
 	}
-	models.SetSessionCookie(w, session.Token, session.Expiry)
+	sessioncookie.SetSessionCookie(w, session.Token, session.Expiry)
 
 	http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
 }
@@ -149,6 +150,6 @@ func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	models.ClearSessionCookie(w)
+	sessioncookie.ClearSessionCookie(w)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

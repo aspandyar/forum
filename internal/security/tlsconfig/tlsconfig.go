@@ -1,4 +1,4 @@
-package main
+package tlsconfig
 
 import "crypto/tls"
 

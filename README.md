@@ -55,9 +55,15 @@ make run
 make stop
 ```
 
-`make run` maps `4000:4000`, so the app remains available at:
+`make run` maps `4001:4000`, so the app remains available at:
 
-`[https://localhost:4000](https://localhost:4000)`
+`[https://localhost:4001](https://localhost:4001)`
+
+The Docker workflow now uses `docker-compose.yml`, mounting:
+
+- `.env` into container runtime environment
+- `st.db` at `/app/st.db`
+- `tls/` at `/app/tls` (read-only)
 
 ## Testing and Coverage
 
@@ -85,6 +91,11 @@ Override threshold when needed:
 make test-cover-enforce COVERAGE_THRESHOLD=80
 ```
 
+## CI/CD
+
+- `CI` workflow runs on pull requests and pushes to `main`/`feature/*`, executes `make test-cover-enforce`, and uploads `coverage.out`.
+- `CD` workflow runs on pushes to `main` and `v*` tags, then builds and pushes the Docker image to `ghcr.io/<owner>/<repo>`.
+
 ## Documentation
 
 - Development setup, env vars, TLS details, troubleshooting: `[docs/development.md](docs/development.md)`
@@ -95,6 +106,3 @@ make test-cover-enforce COVERAGE_THRESHOLD=80
 ## Authors
 
 - `@aspandyar`
-
-
-

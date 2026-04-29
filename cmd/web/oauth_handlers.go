@@ -11,6 +11,7 @@ import (
 	"github.com/aspandyar/forum/internal/models"
 	githuboauth "github.com/aspandyar/forum/internal/oauth/github"
 	googleoauth "github.com/aspandyar/forum/internal/oauth/google"
+	sessioncookie "github.com/aspandyar/forum/internal/transport/http/sessioncookie"
 	"github.com/aspandyar/forum/internal/validator"
 )
 
@@ -51,7 +52,7 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 				app.serverError(w, err)
 				return
 			}
-			models.SetSessionCookie(w, session.Token, session.Expiry)
+			sessioncookie.SetSessionCookie(w, session.Token, session.Expiry)
 			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
 		} else {
 			app.serverError(w, err)
@@ -74,7 +75,7 @@ func (app *application) handleGoogleCallback(w http.ResponseWriter, r *http.Requ
 		app.serverError(w, err)
 		return
 	}
-	models.SetSessionCookie(w, session.Token, session.Expiry)
+	sessioncookie.SetSessionCookie(w, session.Token, session.Expiry)
 	http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
 }
 
@@ -129,7 +130,7 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 				return
 			}
 
-			models.SetSessionCookie(w, session.Token, session.Expiry)
+			sessioncookie.SetSessionCookie(w, session.Token, session.Expiry)
 			http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
 			return
 		}
@@ -153,7 +154,7 @@ func (app *application) loggedinHandler(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	models.SetSessionCookie(w, session.Token, session.Expiry)
+	sessioncookie.SetSessionCookie(w, session.Token, session.Expiry)
 	http.Redirect(w, r, "/forum/create", http.StatusSeeOther)
 }
 
