@@ -3,6 +3,8 @@ APPLICATION_NAME ?= forum
 TLS_DIR ?= tls/
 GO_ENV_GOROOT := $(shell go env GOROOT)
 
+.PHONY: start build run stop test
+
 start:
 	touch st.db
 	echo "DB_USER=aspandyar" > .env
@@ -17,3 +19,6 @@ run:
 
 stop:
 	docker stop ${DOCKER_USERNAME}
+
+test:
+	go test ./...
