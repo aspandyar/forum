@@ -2,23 +2,8 @@
 
 {{define "main"}}
     {{if .Forums}}
-        <table>
-            <tr>
-                <th>Title</th>
-                <th>Created</th>
-                <th>Tags</th>
-                <th>ID</th>
-            </tr>
-            {{range .Forums}}
-            <tr>
-                <td><a href='/forum/view/{{.ID}}'>{{.Title}}</a></td>
-                <td>{{humanDate .Created}}</td>
-                <td>{{.Tags}}</td>
-                <td>#{{.ID}}</td>
-                </tr>
-            {{end}}
-        </table>
+        {{template "forumTable" .}}
     {{else}}
-        <p>There's nothing to see here... yet!</p>
+        <p class="empty-state">There's nothing to see here... yet!</p>
     {{end}}
 {{end}}

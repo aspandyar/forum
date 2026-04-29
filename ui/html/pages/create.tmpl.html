@@ -1,46 +1,49 @@
 {{define "title"}}Create a New Forum{{end}}
 
 {{define "main"}}
-<form action='/forum/create' method='POST' enctype="multipart/form-data">
-    <div>
-        <label>Title:</label>
-        {{with .Form.FieldErrors.title}}
-        <label class='error'>{{.}}</label>
-        {{end}}
-        <input type='text' name='title' value='{{.Form.Title}}'>
-    </div>
-    <div>
-        <label>Content:</label>
-        {{with .Form.FieldErrors.content}}
-        <label class='error'>{{.}}</label>
-        {{end}}
-        <textarea name='content'>{{.Form.Content}}</textarea>
-    </div>
-    <div>
-        <label>Delete in:</label>
-        {{with .Form.FieldErrors.expires}}
-        <label class='error'>{{.}}</label>
-        {{end}}
-        <input type='radio' name='expires' value='365' {{if (eq .Form.Expires 365)}}checked{{end}}> One Year
-        <input type='radio' name='expires' value='7' {{if (eq .Form.Expires 7)}}checked{{end}}> One Week
-        <input type='radio' name='expires' value='1' {{if (eq .Form.Expires 1)}}checked{{end}}> One Day
-    </div>
-    <div>
-        {{with .Form.FieldErrors.tags}}
-        <label class='error'>{{.}}</label>
-        {{end}}
-        <label>Choose Tags:</label><br>
-        {{range .Form.AllTags}}
-        <input type="checkbox" name="tags">{{.}}<br>
-        {{end}}
-        <!-- <textarea name="custom_tags" placeholder="Enter custom tags (comma-separated)"></textarea><br> -->
-    </div>
-    <div>
-        <label for="image-upload">Image:</label>
-        <input type="file" name="image-upload" id="image-upload"><br>
-    </div>
-    <div>
-        <input type='submit' value='Publish snippet'>
-    </div>
-</form>
+<div class="card">
+    <form action='/forum/create' method='POST' enctype="multipart/form-data" class="stack">
+        <div class="field">
+            <label>Title:</label>
+            {{with .Form.FieldErrors.title}}
+            <label class='error'>{{.}}</label>
+            {{end}}
+            <input type='text' name='title' value='{{.Form.Title}}'>
+        </div>
+        <div class="field">
+            <label>Content:</label>
+            {{with .Form.FieldErrors.content}}
+            <label class='error'>{{.}}</label>
+            {{end}}
+            <textarea name='content'>{{.Form.Content}}</textarea>
+        </div>
+        <div class="field">
+            <label>Delete in:</label>
+            {{with .Form.FieldErrors.expires}}
+            <label class='error'>{{.}}</label>
+            {{end}}
+            <div class="field-inline">
+                <label class="inline-option"><input type='radio' name='expires' value='365' {{if (eq .Form.Expires 365)}}checked{{end}}>One Year</label>
+                <label class="inline-option"><input type='radio' name='expires' value='7' {{if (eq .Form.Expires 7)}}checked{{end}}>One Week</label>
+                <label class="inline-option"><input type='radio' name='expires' value='1' {{if (eq .Form.Expires 1)}}checked{{end}}>One Day</label>
+            </div>
+        </div>
+        <div class="field">
+            {{with .Form.FieldErrors.tags}}
+            <label class='error'>{{.}}</label>
+            {{end}}
+            <label>Choose tags:</label>
+            {{range .Form.AllTags}}
+            <label class="inline-option"><input type="checkbox" name="tags" value="{{.}}">{{.}}</label>
+            {{end}}
+        </div>
+        <div class="field">
+            <label for="image-upload">Image:</label>
+            <input type="file" name="image-upload" id="image-upload">
+        </div>
+        <div>
+            <input type='submit' value='Publish forum'>
+        </div>
+    </form>
+</div>
 {{end}}

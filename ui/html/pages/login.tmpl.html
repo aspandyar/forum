@@ -1,34 +1,32 @@
 {{define "title"}}Login{{end}}
 
 {{define "main"}}
-<form action='/user/login' method='POST' novalidate>
-    {{range .Form.NonFieldErrors}}
-        <div class='error'>{{.}}</div>
-    {{end}}
-    <div>
-        <label>Email:</label>
-        {{with .Form.FieldErrors.email}}
-            <label class='error'>{{.}}</label>
+<div class="card">
+    <form action='/user/login' method='POST' novalidate class="stack">
+        {{range .Form.NonFieldErrors}}
+            <div class='error'>{{.}}</div>
         {{end}}
-        <input type='email' name='email' value='{{.Form.Email}}'>
-    </div>
-    <div>
-        <label>Password:</label>
-        {{with .Form.FieldErrors.password}}
-            <label class='error'>{{.}}</label>
-        {{end}}
-        <input type='password' name='password'>
-    </div>
-    <div>
-        <input type='submit' value='Login'>
-    </div>
-    <div>
-        <div class="google-signup-container">
-            <div class="g-signin2" data-onsuccess="onSignIn">
-                <button type="button" id="signup-google-button"><a href="/auth">SIGN IN with GOOGLE</a></button>
-                <button type="button" id="signup-google-button"><a href="/login/github/">SIGN IN with GITHUB</a></button>
-            </div>            
+        <div class="field">
+            <label>Email:</label>
+            {{with .Form.FieldErrors.email}}
+                <label class='error'>{{.}}</label>
+            {{end}}
+            <input type='email' name='email' value='{{.Form.Email}}'>
         </div>
-    </div>
-</form>
+        <div class="field">
+            <label>Password:</label>
+            {{with .Form.FieldErrors.password}}
+                <label class='error'>{{.}}</label>
+            {{end}}
+            <input type='password' name='password'>
+        </div>
+        <div>
+            <input type='submit' value='Login'>
+        </div>
+        <div class="social-buttons">
+            <a class="social-link" href="/auth">Sign in with Google</a>
+            <a class="social-link" href="/login/github/">Sign in with GitHub</a>
+        </div>
+    </form>
+</div>
 {{end}}
