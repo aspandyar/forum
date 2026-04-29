@@ -2,13 +2,14 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"net/http"
 	"os"
 	"runtime/debug"
 	"strings"
 	"time"
+
+	renderpkg "github.com/aspandyar/forum/internal/transport/http/render"
 )
 
 func (app *application) serverError(w http.ResponseWriter, err error) {
@@ -27,23 +28,10 @@ func (app *application) notFound(w http.ResponseWriter) {
 }
 
 func (app *application) render(w http.ResponseWriter, status int, page string, data *templateData) {
-	ts, ok := app.tempalteCache[page]
-	if !ok {
-		err := fmt.Errorf("the template %s does not exist", page)
-		app.serverError(w, err)
-		return
-	}
-
-	buf := new(bytes.Buffer)
-
-	err := ts.ExecuteTemplate(w, "base", data)
+	err := renderpkg.Render(w, app.tempalteCache, status, page, data)
 	if err != nil {
 		app.serverError(w, err)
 	}
-
-	// w.WriteHeader(status)
-
-	buf.WriteTo(w)
 }
 
 func (app *application) newTemplateData(r *http.Request) *templateData {
