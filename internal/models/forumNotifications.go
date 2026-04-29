@@ -1,6 +1,9 @@
 package models
 
-import "errors"
+import (
+	"database/sql"
+	"errors"
+)
 
 type Notification struct {
 	ID              int
@@ -26,7 +29,7 @@ func (m *ForumModel) AskForModeration(userID int) error {
 	stmt := `INSERT INTO forum_notifications (user_name, body, status, forum_link, user_id, user_not_id)
 	VALUES(?, ?, ?, ?, ?, ?)`
 
-	not := *&Notification{}
+	not := Notification{}
 
 	not.Body = "asked for moder"
 	not.Status = AdminStatus
@@ -46,7 +49,7 @@ func (m *ForumModel) AskForModeration(userID int) error {
 func (m *ForumModel) ReportForum(forumID, moderID int, body string) error {
 	stmt := `INSERT INTO forum_notifications (user_name, body, status, forum_link, user_id, user_not_id)
 	VALUES(?, ?, ?, ?, ?, ?)`
-	not := *&Notification{}
+	not := Notification{}
 
 	var user User
 	user, err := m.GetUserByForumID(forumID)
@@ -75,7 +78,7 @@ func (m *ForumModel) ReportForum(forumID, moderID int, body string) error {
 func (m *ForumModel) AnswerFromAdmin(getUserID int, body string) error {
 	stmt := `INSERT INTO forum_notifications (user_name, body, status, forum_link, user_id, user_not_id)
 	VALUES(?, ?, ?, ?, ?, ?)`
-	not := *&Notification{}
+	not := Notification{}
 
 	var err error
 
@@ -103,7 +106,7 @@ func (m *ForumModel) AskForNewForum(forumID, userID int, body string) error {
 	stmt := `INSERT INTO forum_notifications (user_name, body, status, forum_link, user_id, user_not_id)
 	VALUES(?, ?, ?, ?, ?, ?)`
 
-	not := *&Notification{}
+	not := Notification{}
 
 	not.Body = body
 	not.Status = ModerStatus
@@ -121,20 +124,25 @@ func (m *ForumModel) AskForNewForum(forumID, userID int, body string) error {
 }
 
 func (m *ForumModel) ShowUserNotification(role int) ([]*Notification, error) {
-	stmt := `SELECT id, user_name, body, status, forum_link, user_id, user_not_id
-		FROM forum_notifications
-		WHERE status = ?;`
+	var (
+		stmt string
+		rows *sql.Rows
+		err  error
+	)
 
-	var status string
 	if role == AdminRole {
-		status = AdminStatus
+		stmt = `SELECT id, user_name, body, status, forum_link, user_id, user_not_id
+			FROM forum_notifications
+			WHERE status IN (?, ?);`
+		rows, err = m.DB.Query(stmt, AdminStatus, ModerStatus)
 	} else if role == ModeratorRole {
-		status = ModerStatus
+		stmt = `SELECT id, user_name, body, status, forum_link, user_id, user_not_id
+			FROM forum_notifications
+			WHERE status = ?;`
+		rows, err = m.DB.Query(stmt, ModerStatus)
 	} else {
 		return nil, errors.New("how u get here?")
 	}
-
-	rows, err := m.DB.Query(stmt, status)
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,9 @@ DOCKER_USERNAME ?= forumContainer
 APPLICATION_NAME ?= forum
 TLS_DIR ?= tls/
 GO_ENV_GOROOT := $(shell go env GOROOT)
+COVERAGE_THRESHOLD ?= 95.0
+
+.PHONY: start build run stop test test-cover test-cover-enforce
 
 start:
 	touch st.db
@@ -17,3 +20,18 @@ run:
 
 stop:
 	docker stop ${DOCKER_USERNAME}
+
+
+test-cover:
+	go test ./... -coverprofile=coverage.out
+	go tool cover -func=coverage.out
+
+test-cover-enforce:
+	go test ./... -coverprofile=coverage.out
+	@total=$$(go tool cover -func=coverage.out | awk '/^total:/{print $$3}' | tr -d '%'); \
+	echo "Total coverage: $$total% (required: $(COVERAGE_THRESHOLD)%)"; \
+	awk -v total="$$total" -v threshold="$(COVERAGE_THRESHOLD)" 'BEGIN { exit !(total+0 >= threshold+0) }' || \
+	( echo "Coverage gate failed"; exit 1 )
+
+test:
+	go test ./...
