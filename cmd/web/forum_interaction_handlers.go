@@ -50,13 +50,7 @@ func (app *application) forumIsLike(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	userID, _, err := app.sessions.GetSession(cookie.Value)
+	userID, err := app.sessionUserID(r)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -116,13 +110,7 @@ func (app *application) forumIsLikeComment(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	userID, _, err := app.sessions.GetSession(cookie.Value)
+	userID, err := app.sessionUserID(r)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -178,13 +166,7 @@ func (app *application) ForumCommentPost(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	userID, _, err := app.sessions.GetSession(cookie.Value)
+	userID, err := app.sessionUserID(r)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -311,13 +293,7 @@ func (app *application) ForumEditCommentPost(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	userID, _, err := app.sessions.GetSession(cookie.Value)
+	userID, err := app.sessionUserID(r)
 	if err != nil {
 		app.serverError(w, err)
 		return

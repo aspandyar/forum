@@ -43,7 +43,7 @@ go run ./cmd/web/
 
 Open:
 
-[`https://localhost:4000`](https://localhost:4000)
+`[https://localhost:4000](https://localhost:4000)`
 
 The server uses TLS, so your browser may show a certificate warning for local development.
 
@@ -57,16 +57,18 @@ make stop
 
 `make run` maps `4000:4000`, so the app remains available at:
 
-[`https://localhost:4000`](https://localhost:4000)
+`[https://localhost:4000](https://localhost:4000)`
 
 ## Documentation
 
-- Development setup, env vars, TLS details, troubleshooting: [`docs/development.md`](docs/development.md)
-- Refresh audit and modernization backlog: [`docs/audit-and-refresh.md`](docs/audit-and-refresh.md)
-- Architecture and important task map: [`docs/architecture.md`](docs/architecture.md)
-- HTTP API (OpenAPI): [`docs/openapi.yaml`](docs/openapi.yaml). With the server running, browse [**Swagger UI**](https://localhost:4000/swagger/) (same TLS note as the app).
+- Development setup, env vars, TLS details, troubleshooting: `[docs/development.md](docs/development.md)`
+- Refresh audit and modernization backlog: `[docs/audit-and-refresh.md](docs/audit-and-refresh.md)`
+- Architecture and important task map: `[docs/architecture.md](docs/architecture.md)`
+- HTTP API (OpenAPI): `[docs/openapi.yaml](docs/openapi.yaml)`. With the server running, browse **[Swagger UI](https://localhost:4000/swagger/)** (same TLS note as the app).
 
 ## Authors
 
 - `@aspandyar`
-- `@sfaizull`
+
+
+
