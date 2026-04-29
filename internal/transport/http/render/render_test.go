@@ -3,6 +3,7 @@ package render
 import (
 	"net/http/httptest"
 	"testing"
+	"text/template"
 	"time"
 )
 
@@ -42,5 +43,27 @@ func TestNewTemplateCacheAndRender(t *testing.T) {
 	rr = httptest.NewRecorder()
 	if err := Render(rr, cache, 200, "missing-page.tmpl.html", &TemplateData{}); err == nil {
 		t.Fatal("expected missing template error")
+	}
+}
+
+func TestRender_WithManualTemplates(t *testing.T) {
+	okTpl := template.Must(template.New("ok").Parse(`{{define "base"}}render-ok{{end}}`))
+	cache := map[string]*template.Template{
+		"ok.tmpl.html": okTpl,
+	}
+
+	rr := httptest.NewRecorder()
+	if err := Render(rr, cache, 200, "ok.tmpl.html", &TemplateData{}); err != nil {
+		t.Fatalf("Render ok template err=%v", err)
+	}
+	if rr.Body.String() != "render-ok" {
+		t.Fatalf("unexpected render body %q", rr.Body.String())
+	}
+
+	badTpl := template.Must(template.New("bad").Parse(`{{define "not_base"}}x{{end}}`))
+	cache["bad.tmpl.html"] = badTpl
+	rr = httptest.NewRecorder()
+	if err := Render(rr, cache, 200, "bad.tmpl.html", &TemplateData{}); err == nil {
+		t.Fatal("expected execute template error for missing base")
 	}
 }
