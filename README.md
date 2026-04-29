@@ -59,6 +59,32 @@ make stop
 
 `[https://localhost:4000](https://localhost:4000)`
 
+## Testing and Coverage
+
+Run all tests:
+
+```bash
+make test
+```
+
+Generate coverage profile and summary:
+
+```bash
+make test-cover
+```
+
+Enforce minimum coverage threshold (default `95%`):
+
+```bash
+make test-cover-enforce
+```
+
+Override threshold when needed:
+
+```bash
+make test-cover-enforce COVERAGE_THRESHOLD=80
+```
+
 ## Documentation
 
 - Development setup, env vars, TLS details, troubleshooting: `[docs/development.md](docs/development.md)`
