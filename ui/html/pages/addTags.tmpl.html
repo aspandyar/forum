@@ -1,16 +1,20 @@
 {{define "title"}}Add Or Remove Tags{{end}}
 
 {{define "main"}}
-<h2>Tags</h2>
-<form method="post">
-    <label>
-        <input type="radio" name="add_tag" value="1"> Add Tag
-    </label>
-    <label>
-        <input type="radio" name="remove_tag" value="-1"> Remove Tag
-    </label>
-    <label>Write Tags Name:</label>
-    <textarea id="tags_text" name="tags_text"></textarea><br>
-    <input type="submit" value="Submit">
-</form>
+<h2 class="page-title">Tags</h2>
+<div class="card">
+    <form method="post" class="stack">
+        <div class="field-inline">
+            <label class="inline-option"><input type="radio" name="add_tag" value="1">Add Tag</label>
+            <label class="inline-option"><input type="radio" name="remove_tag" value="-1">Remove Tag</label>
+        </div>
+        <div class="field">
+            <label for="tags_text">Write tag names:</label>
+            <textarea id="tags_text" name="tags_text"></textarea>
+        </div>
+        <div>
+            <input type="submit" value="Submit">
+        </div>
+    </form>
+</div>
 {{end}}

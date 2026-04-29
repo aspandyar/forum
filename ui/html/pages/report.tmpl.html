@@ -1,25 +1,24 @@
 {{define "title"}}Report{{end}}
 
 {{define "main"}}
-<h2>Report Content</h2>
-<form method="post">
-    <label>
-        <input type="checkbox" name="reportType" value="irrelevant"> Irrelevant
-    </label>
-    <label>
-        <input type="checkbox" name="reportType" value="obscene"> Obscene
-    </label>
-    <label>
-        <input type="checkbox" name="reportType" value="harassment"> Harassment
-    </label>
-    <label>
-        <input type="checkbox" name="reportType" value="illegal"> Illegal
-    </label>
-    <label>
-        <input type="checkbox" name="reportType" value="insulting"> Insulting
-    </label><br>
-    <label for="reportDetails">Additional Details:</label>
-    <textarea id="reportDetails" name="reportDetails" rows="4" cols="50"></textarea><br>
-    <input type="submit" value="Submit Report">
-</form>
+<h2 class="page-title">Report content</h2>
+<div class="card">
+    <form method="post" class="stack">
+        <div class="field">
+            <label>Reason:</label>
+            <label class="inline-option"><input type="checkbox" name="reportType" value="irrelevant">Irrelevant</label>
+            <label class="inline-option"><input type="checkbox" name="reportType" value="obscene">Obscene</label>
+            <label class="inline-option"><input type="checkbox" name="reportType" value="harassment">Harassment</label>
+            <label class="inline-option"><input type="checkbox" name="reportType" value="illegal">Illegal</label>
+            <label class="inline-option"><input type="checkbox" name="reportType" value="insulting">Insulting</label>
+        </div>
+        <div class="field">
+            <label for="reportDetails">Additional details:</label>
+            <textarea id="reportDetails" name="reportDetails"></textarea>
+        </div>
+        <div>
+            <input type="submit" value="Submit report">
+        </div>
+    </form>
+</div>
 {{end}}

@@ -1,36 +1,23 @@
 {{define "title"}}Home{{end}}
 
 {{define "main"}}
-    <form action="/forum/category" method="post">
-        <div>
-            <label>Choose Tags:</label><br>
-            <input type="checkbox" name="tags" value="tag1"> tag1<br>
-            <input type="checkbox" name="tags" value="tag2"> tag2<br>
-            <input type="checkbox" name="tags" value="tag3"> tag3<br>
-            <textarea name="custom_tags" placeholder="Enter custom tags (comma-separated)"></textarea><br>
-        </div>
-        <div>
-            <input type='submit' value='Publish snippet'>
-        </div>
-    </form>
+    <div class="card stack">
+        <form action="/forum/category" method="post" class="stack">
+            <div class="field">
+                <label>Choose tags:</label>
+                <label class="inline-option"><input type="checkbox" name="tags" value="tag1">tag1</label>
+                <label class="inline-option"><input type="checkbox" name="tags" value="tag2">tag2</label>
+                <label class="inline-option"><input type="checkbox" name="tags" value="tag3">tag3</label>
+                <textarea name="custom_tags" placeholder="Enter custom tags (comma-separated)"></textarea>
+            </div>
+            <div>
+                <input type='submit' value='Filter forums'>
+            </div>
+        </form>
+    </div>
     {{if .Forums}}
-        <table>
-            <tr>
-                <th>Title</th>
-                <th>Created</th>
-                <th>Tags</th>
-                <th>ID</th>
-            </tr>
-            {{range .Forums}}
-            <tr>
-                <td><a href='/forum/view/{{.ID}}'>{{.Title}}</a></td>
-                <td>{{humanDate .Created}}</td>
-                <td>{{.Tags}}</td>
-                <td>#{{.ID}}</td>
-                </tr>
-            {{end}}
-        </table>
+        {{template "forumTable" .}}
     {{else}}
-        <p>No such tags... :cry</p>
+        <p class="empty-state">No forums found for selected tags.</p>
     {{end}}
 {{end}}
