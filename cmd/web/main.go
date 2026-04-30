@@ -40,9 +40,8 @@ func main() {
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
-	err := envfile.Load(".env")
-	if err != nil {
-		log.Fatal("Error loading .env file:", err)
+	if err := envfile.Load(".env"); err != nil {
+		infoLog.Printf("No .env loaded, using environment variables: %v", err)
 	}
 
 	dbUser := os.Getenv("DB_USER")
@@ -105,9 +104,21 @@ func main() {
 		WriteTimeout:   10 * time.Second,
 	}
 
-	infoLog.Printf("starting server on %s", *addr)
-	err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
-	errorLog.Fatal(err)
+	listenAddr := *addr
+	if port := os.Getenv("PORT"); port != "" {
+		listenAddr = ":" + port
+	}
+	srv.Addr = listenAddr
+
+	// Heroku terminates TLS at the router; run plain HTTP in dyno.
+	if os.Getenv("DYNO") != "" {
+		infoLog.Printf("starting server on %s (Heroku HTTP mode)", srv.Addr)
+		errorLog.Fatal(srv.ListenAndServe())
+		return
+	}
+
+	infoLog.Printf("starting server on %s (local TLS mode)", srv.Addr)
+	errorLog.Fatal(srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem"))
 }
 
 func openDB(path string) (*sql.DB, error) {
