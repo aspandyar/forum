@@ -11,6 +11,18 @@ Simple Go-based forum application with server-rendered HTML, SQLite storage, and
 - Role-based moderation flows
 - Google and GitHub OAuth login paths
 
+## Project Philosophy
+
+This project is intentionally built with the Go standard library first.
+
+Only three external libraries are used, each for a specific task:
+
+- `github.com/mattn/go-sqlite3`: SQLite driver
+- `golang.org/x/crypto`: password hashing (`bcrypt`)
+- `github.com/google/uuid`: UUID generation
+
+Everything else (HTTP server, routing, templates, cookies/sessions, middleware-style flow, TLS wiring, and app structure) is implemented with the standard library.
+
 ## Quickstart
 
 ### Prerequisites
@@ -19,19 +31,21 @@ Simple Go-based forum application with server-rendered HTML, SQLite storage, and
 - Docker (optional, for container workflow)
 - `make`
 
-### 1) Bootstrap local prerequisites
+### 1) Bootstrap all required local settings and files
 
-This project expects three local artifacts:
+This project requires these local artifacts/settings before it can run:
 
 - `st.db`
 - `.env` (with DB credentials)
 - TLS certificates under `tls/`
 
-Create all of them with:
+Generate all required local files with:
 
 ```bash
 make start
 ```
+
+If needed, adjust environment settings in `.env` after generation.
 
 ### 2) Run the app
 
