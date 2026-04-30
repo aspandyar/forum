@@ -110,6 +110,17 @@ make test-cover-enforce COVERAGE_THRESHOLD=80
 - `CI` workflow runs on pull requests and pushes to `main`/`feature/*`, executes `make test-cover-enforce`, and uploads `coverage.out`.
 - `CD` workflow runs on pushes to `main` and `v*` tags, then builds and pushes the Docker image to `ghcr.io/<owner>/<repo>`.
 
+## GitHub Pages Redirect
+
+GitHub Pages cannot host this Go app directly (it serves static files only), so use Pages as a redirect entry point to Heroku.
+
+1. Commit and push this repo changes.
+2. In GitHub: **Settings -> Pages**.
+3. Set **Build and deployment** source to **Deploy from a branch**.
+4. Select branch `main` and folder `/docs`, then save.
+5. Open your Pages URL (for example, `https://aspandyar.github.io/forum/`) and it will redirect to:
+   - `https://forum-go-6040e0848372.herokuapp.com/`
+
 ## Documentation
 
 - Development setup, env vars, TLS details, troubleshooting: `[docs/development.md](docs/development.md)`
